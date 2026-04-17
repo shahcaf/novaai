@@ -280,16 +280,7 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
-.header-badge {
-  font-size: 0.65rem;
-  background: var(--accent-glow);
-  border: 1px solid var(--accent);
-  color: var(--accent-2);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-weight: 600;
-  -webkit-text-fill-color: var(--accent-2);
-}
+
 
 .menu-btn {
   background: none;
