@@ -70,6 +70,10 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeConv?.messages, isLoading]);
 
+  useEffect(() => {
+    if (editingId && editInputRef.current) editInputRef.current.focus();
+  }, [editingId]);
+
   const fetchMembers = async (id = activeId) => {
     try {
       if (!id || id === 'default') return;
@@ -112,12 +116,13 @@ function App() {
           headers: { 'x-auth-token': localStorage.getItem('token') }
         });
         const teamConv = {
-          id: res.data.id,
+          id: String(res.data.id),
           title: res.data.title,
           messages: [],
           createdAt: res.data.createdAt,
           isShared: true,
-          inviteCode: res.data.inviteCode
+          inviteCode: res.data.inviteCode,
+          creatorId: String(user.id)
         };
         setConversations([teamConv, ...conversations]);
         setActiveId(teamConv.id);
