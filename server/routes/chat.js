@@ -143,13 +143,17 @@ router.post('/', auth, async (req, res) => {
     
     basePrompt += " Use clear typography, bolded keywords, and properly formatted code blocks. Ensure your tone always feels sophisticated.";
 
+    basePrompt += "\n\n[IMAGE GENERATION CAPABILITY]: You have access to a high-end image generator. If the user asks for an image, you should simply provide a short confirmation and ensure your response triggers the internal generator. The generator triggers automatically if your response or the user's prompt contains the phrase 'generate an image' or starts with '/imagine'.";
+
     // IMAGE GENERATION HEURISTIC
     const lastUserMessage = messages[messages.length - 1]?.content;
     const isImageRequest = typeof lastUserMessage === 'string' && (
       lastUserMessage.toLowerCase().startsWith('/imagine') || 
-      lastUserMessage.toLowerCase().startsWith('generate an image') ||
-      lastUserMessage.toLowerCase().startsWith('create an image') ||
-      lastUserMessage.toLowerCase().startsWith('/gen')
+      lastUserMessage.toLowerCase().startsWith('/gen') ||
+      lastUserMessage.toLowerCase().includes('generate an image') ||
+      lastUserMessage.toLowerCase().includes('create an image') ||
+      lastUserMessage.toLowerCase().includes('draw me a') ||
+      lastUserMessage.toLowerCase().includes('show me a')
     );
 
     if (isImageRequest) {
