@@ -30,6 +30,15 @@ const Register = () => {
         {error && <div className="error-msg">{error}</div>}
 
         <div className="social-login-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+          {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              Google registration is auto-enabled with valid ID
+            </div>
+          ) : (
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '10px', border: '1px dashed var(--border)', borderRadius: '12px' }}>
+              Google registration is being synchronized.
+            </div>
+          )}
           <div className="social-flex-row" style={{ display: 'flex', gap: '10px' }}>
             <button 
               type="button" 
