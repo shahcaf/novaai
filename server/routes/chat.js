@@ -145,6 +145,43 @@ router.post('/', auth, async (req, res) => {
     
     basePrompt += " Use clear typography, bolded keywords, and properly formatted code blocks. Ensure your tone always feels sophisticated.";
 
+    // IMAGE GENERATION HEURISTIC
+    const lastUserMessage = messages[messages.length - 1]?.content;
+    const isImageRequest = typeof lastUserMessage === 'string' && (
+      lastUserMessage.toLowerCase().startsWith('/imagine') || 
+      lastUserMessage.toLowerCase().startsWith('generate an image') ||
+      lastUserMessage.toLowerCase().startsWith('create an image') ||
+      lastUserMessage.toLowerCase().startsWith('/gen')
+    );
+
+    if (isImageRequest && process.env.OPENAI_API_KEY) {
+      try {
+        const prompt = lastUserMessage.replace(/^\/imagine |^generate an image |^create an image |^\/gen /i, '');
+        console.log('🖼️ NOVA IMAGE GEN TRIGGERED:', prompt);
+        
+        const response = await openai.images.generate({
+          model: "dall-e-3",
+          prompt: prompt,
+          n: 1,
+          size: "1024x1024",
+          quality: "hd"
+        });
+
+        const imageUrl = response.data[0].url;
+        const aiResponse = `### 🎨 Nova Vision | Creative Generation\n\nI have generated the image based on your request: **"${prompt}"**\n\n![Generated Image](${imageUrl})\n\n*Note: This image was generated using DALL-E 3. You can download it directly or ask me to refine the concept.*`;
+        
+        // Save to DB (Simplified for this branch)
+        const convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
+        await Message.create({ content: lastUserMessage, isAI: false, senderId: req.user.id, conversationId: convId });
+        await Message.create({ content: aiResponse, isAI: true, senderId: req.user.id, conversationId: convId, metadata: JSON.stringify({ model: 'DALL-E 3' }) });
+
+        return res.json({ content: aiResponse, model: 'DALL-E 3 (Nova Vision)' });
+      } catch (imgErr) {
+        console.error('Image Gen Error:', imgErr);
+        // Fallback to text if image gen fails
+      }
+    }
+
     const SYSTEM_PROMPT = basePrompt;
 
     // Prepare multi-modal/contextual messages

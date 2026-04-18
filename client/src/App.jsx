@@ -741,7 +741,27 @@ function App() {
                                   {children}
                                 </code>
                               )
-                            }
+                            },
+                            // --- PREMIUM LINK HANDLER ---
+                            a: ({ node, ...props }) => (
+                              <a 
+                                {...props} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                style={{ color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: '4px' }}
+                              />
+                            ),
+                            // --- PREMIUM IMAGE HANDLER ---
+                            img: ({ node, ...props }) => (
+                              <div className="msg-image-container" style={{ margin: '15px 0', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <img 
+                                  {...props} 
+                                  style={{ maxWidth: '100%', height: 'auto', display: 'block', cursor: 'zoom-in' }} 
+                                  alt="Nova AI Performance"
+                                  onClick={() => window.open(props.src, '_blank')}
+                                />
+                              </div>
+                            )
                           }}
                         >
                           {msg.content}
