@@ -56,7 +56,13 @@ function App() {
   const activeConv = conversations.find(c => c.id === activeId) || conversations[0];
 
   useEffect(() => {
-    localStorage.setItem('nova_convs', JSON.stringify(conversations));
+    if (user) {
+      fetchConversations();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem('nova_convs', JSON.stringify(conversations.filter(c => !c.isShared)));
   }, [conversations]);
 
   useEffect(() => {
@@ -67,17 +73,37 @@ function App() {
     if (editingId && editInputRef.current) editInputRef.current.focus();
   }, [editingId]);
 
-  const createNewConversation = (isShared = false) => {
-    const newConv = {
-      id: Date.now().toString(),
-      title: isShared ? 'New Team Chat' : 'New Chat',
-      messages: [],
-      createdAt: new Date().toISOString(),
-      isShared: isShared,
-      inviteCode: isShared ? Math.random().toString(36).substring(7) : null
-    };
-    setConversations([newConv, ...conversations]);
-    setActiveId(newConv.id);
+  const createNewConversation = async (isShared = false) => {
+    if (isShared) {
+      try {
+        const res = await axios.post(`${API_URL}/api/team/create`, { title: 'New Team Chat' }, {
+          headers: { 'x-auth-token': localStorage.getItem('token') }
+        });
+        const teamConv = {
+          id: res.data.id,
+          title: res.data.title,
+          messages: [],
+          createdAt: res.data.createdAt,
+          isShared: true,
+          inviteCode: res.data.inviteCode
+        };
+        setConversations([teamConv, ...conversations]);
+        setActiveId(teamConv.id);
+      } catch (err) {
+        console.error(err);
+        alert('Failed to create team chat on server.');
+      }
+    } else {
+      const newConv = {
+        id: Date.now().toString(),
+        title: 'New Chat',
+        messages: [],
+        createdAt: new Date().toISOString(),
+        isShared: false
+      };
+      setConversations([newConv, ...conversations]);
+      setActiveId(newConv.id);
+    }
     setIsSidebarOpen(false);
   };
 
@@ -118,19 +144,45 @@ function App() {
       const res = await axios.post(`${API_URL}/api/team/join/${code}`, {}, {
         headers: { 'x-auth-token': localStorage.getItem('token') }
       });
-      alert(res.data.message);
+      alert(res.data.message || 'Joined team successfully!');
       // Remove param from URL
       window.history.replaceState({}, document.title, window.location.pathname);
       // Refresh convs
       fetchConversations();
     } catch (err) {
       console.error(err);
+      alert('Failed to join team: ' + (err.response?.data?.error || err.message));
     }
   };
 
   const fetchConversations = async () => {
-    // This could sync with backend in the future
-    // For now we keep localStorage but add sharing capability
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const res = await axios.get(`${API_URL}/api/team/my-chats`, {
+        headers: { 'x-auth-token': token }
+      });
+
+      const sharedConvs = res.data.map(c => ({
+        id: c.id,
+        title: c.title,
+        messages: c.Messages || [],
+        createdAt: c.createdAt,
+        isShared: true,
+        inviteCode: c.inviteCode
+      }));
+
+      // Merge with local: keep local, but replace/add shared from DB
+      setConversations(prev => {
+        const local = prev.filter(p => !p.isShared);
+        // Deduplicate shared
+        const merged = [...local, ...sharedConvs];
+        return merged.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      });
+    } catch (err) {
+      console.error('Fetch error:', err);
+    }
   };
 
   const shareConversation = () => {
