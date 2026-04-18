@@ -388,19 +388,28 @@ router.post('/', auth, async (req, res) => {
 
     try {
       // Save User Message
-      const userMsgContent = messages[messages.length - 1]; // Get the latest user message
-      if (userMsgContent && userMsgContent.role === 'user') {
-        const contentStr = Array.isArray(userMsgContent.content) 
-          ? userMsgContent.content.find(c => c.type === 'text')?.text || "[Media]" 
-          : userMsgContent.content;
+      const userMsgRaw = messages[messages.length - 1]; 
+      const userMsgProcessed = processedMessages[processedMessages.length - 1]; // Use the one with the [ATTACHMENT] tag
+      
+      if (userMsgRaw && userMsgRaw.role === 'user') {
+        let contentToSave = "";
+        if (Array.isArray(userMsgProcessed.content)) {
+          // Vision model format: extract text and append markers
+          const textPart = userMsgProcessed.content.find(c => c.type === 'text')?.text || "";
+          const hasImage = userMsgProcessed.content.some(c => c.type === 'image_url');
+          contentToSave = `${textPart}${hasImage ? "\n\n[USER ATTACHMENT: Image Processed]" : ""}`;
+        } else {
+          // Standard text format (includes our injected tags)
+          contentToSave = userMsgProcessed.content;
+        }
           
         await Message.create({
-          content: contentStr,
+          content: contentToSave,
           isAI: false,
           senderId: req.user.id,
           conversationId: convId,
-          mediaUrl: userMsgContent.mediaUrl || '',
-          mediaType: userMsgContent.mediaType || 'none'
+          mediaUrl: userMsgRaw.mediaUrl || '',
+          mediaType: userMsgRaw.mediaType || 'none'
         });
       }
 
