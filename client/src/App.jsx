@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
-import { Plus, Send, Square } from 'lucide-react';
+import { Plus, Send, Square, Trash2 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
