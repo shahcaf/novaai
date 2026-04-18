@@ -975,47 +975,103 @@ body::after {
   50% { opacity: 1; }
 }
 
-.custom-google-btn-premium {
+/* ─── Premium Social Auth Buttons ────────────────── */
+.social-login-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 0.5rem;
+}
+
+.social-auth-btn {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
-  background: white;
-  color: #1f1f1f;
-  border: 1px solid #e0e0e0;
-  padding: 0.75rem;
-  border-radius: 12px;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 14px 20px;
+  border-radius: 14px;
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.01em;
 }
 
-.custom-google-btn-premium:hover {
-  background: #f8f8f8;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transform: translateY(-1px);
+.social-auth-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+.social-auth-btn:hover::after { transform: translateX(100%); }
+.social-auth-btn:hover { transform: translateY(-2px); }
+.social-auth-btn:active { transform: scale(0.98); }
+
+/* Google — clean white card style */
+.google-auth-btn {
+  background: #fff;
+  color: #1f1f1f;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
+}
+.google-auth-btn:hover {
+  background: #f5f5f5;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
 }
 
-.custom-google-btn-premium:active {
-  transform: scale(0.98);
+/* Discord — brand purple glass style */
+.discord-auth-btn {
+  background: linear-gradient(135deg, #5865F2, #7289da);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(88, 101, 242, 0.35);
+}
+.discord-auth-btn:hover {
+  background: linear-gradient(135deg, #4752c4, #5865F2);
+  box-shadow: 0 8px 25px rgba(88, 101, 242, 0.5);
 }
 
-.google-icon-wrapper {
-  background: white;
-  width: 24px;
-  height: 24px;
+/* Auth Logo Mark */
+.auth-logo-mark {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0 auto 1.5rem;
+  box-shadow: 0 8px 24px rgba(124, 106, 247, 0.4);
+}
+.auth-logo-mark span {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: white;
+  letter-spacing: -0.05em;
 }
 
-.google-icon-wrapper img {
-  width: 18px;
-  height: 18px;
+/* Auth Error */
+.auth-error-msg {
+  color: #ff4d6d;
+  background: rgba(255, 77, 109, 0.08);
+  border: 1px solid rgba(255, 77, 109, 0.2);
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
+
+/* Auth footer link */
+.auth-footer { color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 1.5rem; }
+.auth-footer a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.auth-footer a:hover { text-decoration: underline; }
+
+
 
 .auth-card-badge {
   position: absolute;
