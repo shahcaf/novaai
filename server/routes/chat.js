@@ -64,15 +64,33 @@ router.post('/', auth, async (req, res) => {
 
     try {
       if (isGPT) {
-        const completion = await openai.chat.completions.create({
-          model: activeModel,
-          messages: [
-            { role: "system", content: "You are Nova AI, powered by GPT-4. Be premium, helpful, and concise." },
-            ...processedMessages
-          ],
-          max_tokens: 1024,
-        });
-        aiContent = completion.choices[0].message.content;
+        try {
+          const completion = await openai.chat.completions.create({
+            model: activeModel,
+            messages: [
+              { role: "system", content: "You are Nova AI, powered by GPT-4. Be premium, helpful, and concise." },
+              ...processedMessages
+            ],
+            max_tokens: 1024,
+          });
+          aiContent = completion.choices[0].message.content;
+        } catch (gptErr) {
+          // If GPT-4o is missing (Tier 1 key), try GPT-4o-mini automatically
+          if (gptErr.status === 404 && activeModel === 'gpt-4o') {
+            console.warn('GPT-4o not found, falling back to GPT-4o-mini...');
+            const miniCompletion = await openai.chat.completions.create({
+              model: 'gpt-4o-mini',
+              messages: [
+                { role: "system", content: "You are Nova AI (GPT-4o-mini). Be premium and helpful." },
+                ...processedMessages
+              ],
+              max_tokens: 1024,
+            });
+            aiContent = miniCompletion.choices[0].message.content;
+          } else {
+            throw gptErr;
+          }
+        }
       } else {
         const completion = await groq.chat.completions.create({
           model: activeModel,
@@ -86,13 +104,13 @@ router.post('/', auth, async (req, res) => {
         aiContent = completion.choices[0].message.content;
       }
     } catch (apiErr) {
-      console.error('Initial AI call failed, attempting fallback:', apiErr.message);
+      console.error('Final AI fallback triggered:', apiErr.message);
       
-      // If it's a decommissioned error or any 400, try a guaranteed stable model
+      // Ultimate fallback to Groq if OpenAI fails entirely
       const fallbackCompletion = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
         messages: [
-          { role: "system", content: "You are Nova AI. (Note: The user's primary model was unavailable, so I am assisting them now)." },
+          { role: "system", content: "You are Nova AI assisting the user because their primary model is currently restricted or unavailable." },
           ...processedMessages
         ],
         temperature: 0.7,
