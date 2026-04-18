@@ -26,8 +26,8 @@ const Login = () => {
         await googleLogin(tokenResponse.access_token);
         navigate('/');
       } catch (err) {
-        console.error(err);
-        setError('Google login failed');
+        console.error('Google Auth Server Error:', err.response?.data);
+        setError(err.response?.data?.error || 'Google login failed - server error');
       }
     },
     onError: () => setError('Google login failed'),
