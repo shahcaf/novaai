@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Image, Paperclip, Send, Settings, LogOut, LayoutGrid, Volume2, Square, Trash2, Edit2, X, MessageSquare, Globe, Cpu, Zap } from 'lucide-react';
+import { Plus, Send, Square } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -16,8 +15,7 @@ const SUGGESTIONS = [
 ];
 
 function App() {
-  const { user, logout } = useContext(AuthContext);
-  const navigate = useNavigate();
+  const { user, logout, updateProfile } = useContext(AuthContext);
   const [conversations, setConversations] = useState(() => {
     const saved = localStorage.getItem('nova_convs');
     return saved ? JSON.parse(saved) : [{ 
@@ -38,6 +36,10 @@ function App() {
   // Settings State
   const [activeModel, setActiveModel] = useState('Llama 3.3 (70B)');
   const [fontSize, setFontSize] = useState('Medium');
+  const [theme, setTheme] = useState('Dark');
+  const [aiSpeed, setAiSpeed] = useState('Fast');
+  const [editUsername, setEditUsername] = useState(user?.username || '');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -245,8 +247,21 @@ function App() {
     return acc;
   }, {});
 
+  const saveProfileChanges = async () => {
+    try {
+      setIsUpdating(true);
+      await updateProfile({ username: editUsername });
+      alert('Profile updated successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update profile.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
-    <div className="app-container">
+    <div className="app-container" data-theme={theme.toLowerCase()}>
       <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">N</div>
@@ -314,34 +329,45 @@ function App() {
               exit={{ opacity: 0, scale: 0.95 }}
             >
               <div className="modal-header">
-                <h3>System Settings</h3>
+                <h3>System Preferences</h3>
                 <button className="close-btn" onClick={() => setIsSettingsOpen(false)}>✕</button>
               </div>
               <div className="modal-body">
                 <div className="setting-section">
-                  <h4>Profile & Account</h4>
+                  <h4>Profile & Identity</h4>
                   <div className="setting-item">
-                    <div className="setting-label">Email Address</div>
-                    <div className="setting-value">{user?.email}</div>
+                    <div className="setting-label">Display Name</div>
+                    <div className="setting-group-v">
+                      <input 
+                        className="setting-input" 
+                        value={editUsername} 
+                        onChange={e => setEditUsername(e.target.value)}
+                        placeholder="Enter username"
+                      />
+                      <button className="save-mini-btn" onClick={saveProfileChanges} disabled={isUpdating}>
+                        {isUpdating ? 'Saving...' : 'Save Name'}
+                      </button>
+                    </div>
                   </div>
                   <div className="setting-item">
-                    <div className="setting-label">Membership</div>
-                    <div className="setting-value" style={{ color: 'var(--accent)' }}>Basic Plan</div>
+                    <div className="setting-label">Email</div>
+                    <div className="setting-value">{user?.email}</div>
                   </div>
                 </div>
 
                 <div className="setting-section">
-                  <h4>Chat Preferences</h4>
+                  <h4>Interface & Appearance</h4>
                   <div className="setting-item">
-                    <div className="setting-label">AI Model</div>
-                    <select value={activeModel} onChange={e => setActiveModel(e.target.value)} className="setting-select">
-                      <option>Llama 3.3 (70B)</option>
-                      <option>Mixtral 8x7B</option>
-                      <option>Gemma 2 (9B)</option>
+                    <div className="setting-label">Color Theme</div>
+                    <select value={theme} onChange={e => setTheme(e.target.value)} className="setting-select">
+                      <option>Dark</option>
+                      <option>Light</option>
+                      <option>Cyberpunk</option>
+                      <option>Midnight</option>
                     </select>
                   </div>
                   <div className="setting-item">
-                    <div className="setting-label">Text Size</div>
+                    <div className="setting-label">Typography</div>
                     <select value={fontSize} onChange={e => setFontSize(e.target.value)} className="setting-select">
                       <option>Small</option>
                       <option>Medium</option>
@@ -351,17 +377,34 @@ function App() {
                 </div>
 
                 <div className="setting-section">
-                  <h4>Security & Privacy</h4>
+                  <h4>AI Engine Settings</h4>
                   <div className="setting-item">
-                    <div className="setting-label">Data Retention</div>
-                    <div className="setting-value">Stored Locally</div>
+                    <div className="setting-label">Preferred Model</div>
+                    <select value={activeModel} onChange={e => setActiveModel(e.target.value)} className="setting-select">
+                      <option>Llama 3.3 (70B)</option>
+                      <option>Mixtral 8x7B</option>
+                      <option>Gemma 2 (9B)</option>
+                    </select>
                   </div>
-                  <button className="danger-btn" onClick={clearAllHistory}>Delete All Chat History</button>
+                  <div className="setting-item">
+                    <div className="setting-label">Response Mode</div>
+                    <select value={aiSpeed} onChange={e => setAiSpeed(e.target.value)} className="setting-select">
+                      <option>Fast (Balanced)</option>
+                      <option>Precise (Strict)</option>
+                      <option>Creative (Unfiltered)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="setting-section">
+                  <h4>Data & Privacy</h4>
+                  <button className="danger-btn" onClick={clearAllHistory}>
+                    <Trash2 size={14} style={{ marginRight: 8 }} /> Delete All Chat History
+                  </button>
                 </div>
 
                 <div className="setting-footer">
-                  <button className="auth-btn logout-final" onClick={logout}>Logout of all sessions</button>
-                  <div className="v-info">Nova AI Version 2.1.0 · Build 418</div>
+                  <div className="v-info">Nova Cloud · v2.1.5 · Build 502</div>
                 </div>
               </div>
             </motion.div>

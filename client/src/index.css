@@ -631,6 +631,55 @@ body {
 .logout-final { background: #ff4d4d !important; box-shadow: 0 4px 15px rgba(255, 77, 77, 0.2); }
 .v-info { margin-top: 1.25rem; text-align: center; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
 
+.setting-group-v { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; max-width: 240px; }
+.setting-input { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.75rem; color: var(--text-main); font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+.setting-input:focus { border-color: var(--accent); }
+.save-mini-btn { background: var(--accent); color: white; border: none; border-radius: 6px; padding: 0.4rem 0.75rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+.save-mini-btn:hover { opacity: 0.9; }
+.save-mini-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ─── Themes ──────────────────────────────────── */
+[data-theme="light"] {
+  --bg-main: #f9f9f9;
+  --bg-sidebar: #ffffff;
+  --surface: #f0f0f0;
+  --surface-hover: #e5e5e5;
+  --border: rgba(0, 0, 0, 0.1);
+  --text-main: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-muted: #7a7a7a;
+  --accent: #7c6af7;
+  --accent-2: #c47cf2;
+}
+
+[data-theme="midnight"] {
+  --bg-main: #02040a;
+  --bg-sidebar: #010101;
+  --surface: #0d1117;
+  --surface-hover: #161b22;
+  --accent: #238636;
+  --accent-2: #3fb950;
+  --accent-glow: rgba(35, 134, 54, 0.25);
+}
+
+[data-theme="cyberpunk"] {
+  --bg-main: #05051a;
+  --bg-sidebar: #020210;
+  --surface: #0a0a25;
+  --surface-hover: #151535;
+  --border: rgba(0, 255, 255, 0.2);
+  --text-main: #00ffff;
+  --text-secondary: #ff00ff;
+  --text-muted: #70ffff;
+  --accent: #ff00ff;
+  --accent-2: #ffff00;
+  --accent-glow: rgba(255, 0, 255, 0.5);
+  --font: 'JetBrains Mono', monospace;
+}
+
+[data-theme="cyberpunk"] .sidebar-logo-icon { background: linear-gradient(135deg, #00ffff, #ff00ff); }
+[data-theme="cyberpunk"] .empty-logo { background: linear-gradient(135deg, #00ffff, #ff00ff); box-shadow: 0 0 40px rgba(0, 255, 255, 0.4); }
+
 /* ─── Scrollbar ───────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

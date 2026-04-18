@@ -80,4 +80,25 @@ router.get('/me', async (req, res) => {
   }
 });
 
+// Update Profile
+router.put('/profile', async (req, res) => {
+  try {
+    const token = req.header('x-auth-token');
+    if (!token) return res.status(401).json({ error: 'No token, authorization denied' });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    const { username, avatar } = req.body;
+    let user = await User.findByPk(decoded.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (username) user.username = username;
+    if (avatar) user.avatar = avatar;
+    
+    await user.save();
+    res.json({ id: user.id, username: user.username, email: user.email, avatar: user.avatar });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
