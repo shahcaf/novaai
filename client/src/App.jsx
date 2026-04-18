@@ -19,14 +19,38 @@ function App() {
   const { user, logout, updateProfile } = useContext(AuthContext);
   const [conversations, setConversations] = useState(() => {
     const saved = localStorage.getItem('nova_convs');
-    return saved ? JSON.parse(saved) : [{ 
-      id: 'default', 
+    let convs = saved ? JSON.parse(saved) : [{ 
+      id: '00000000-0000-4000-8000-000000000000', // Valid UUID v4 variant for internal default
       title: 'New Chat', 
       messages: [], 
       createdAt: new Date().toISOString() 
     }];
+    
+    // Migration: If anyone has 'default' as an ID, change it to the UUID
+    let needsMigration = false;
+    convs = convs.map(c => {
+      if (c.id === 'default') {
+        needsMigration = true;
+        return { ...c, id: '00000000-0000-4000-8000-000000000000' };
+      }
+      return c;
+    });
+    
+    if (needsMigration && saved) {
+      localStorage.setItem('nova_convs', JSON.stringify(convs));
+    }
+    
+    return convs;
   });
-  const [activeId, setActiveId] = useState('default');
+  const [activeId, setActiveId] = useState(() => {
+    const saved = localStorage.getItem('nova_convs');
+    if (saved) {
+      const convs = JSON.parse(saved);
+      const firstId = convs[0]?.id;
+      return firstId === 'default' ? '00000000-0000-4000-8000-000000000000' : (firstId || '00000000-0000-4000-8000-000000000000');
+    }
+    return '00000000-0000-4000-8000-000000000000';
+  });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -101,13 +125,13 @@ function App() {
   const clearAllHistory = () => {
     if (window.confirm('Are you sure you want to delete ALL chat history? This cannot be undone.')) {
       const resetConv = [{ 
-        id: 'default', 
+        id: '00000000-0000-4000-8000-000000000000', 
         title: 'New Chat', 
         messages: [], 
         createdAt: new Date().toISOString() 
       }];
       setConversations(resetConv);
-      setActiveId('default');
+      setActiveId('00000000-0000-4000-8000-000000000000');
       setIsSettingsOpen(false);
     }
   };

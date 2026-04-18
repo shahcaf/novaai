@@ -40,10 +40,13 @@ router.post('/', auth, async (req, res) => {
     const aiContent = completion.choices[0].message.content;
     
     // Save to DB if needed
+    const convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
+
     await Message.create({
-      text: aiContent,
+      content: aiContent,
       isAI: true,
-      senderId: req.user.id
+      senderId: req.user.id,
+      conversationId: convId
     });
 
     res.json({ content: aiContent });

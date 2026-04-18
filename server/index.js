@@ -50,7 +50,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 sequelize.authenticate()
   .then(() => {
     console.log('Database connection authenticated ✓');
-    return sequelize.sync({ alter: true });
+    return sequelize.sync();
   })
   .then(() => {
     console.log('CockroachDB synced ✓');

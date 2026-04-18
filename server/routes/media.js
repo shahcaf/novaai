@@ -26,11 +26,14 @@ router.post('/upload', auth, upload.single('media'), async (req, res) => {
     const mediaUrl = `/uploads/${req.file.filename}`;
     const mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
 
+    const convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
+
     const newMessage = await Message.create({
       senderId: req.user.id,
       content: req.body.content || '',
       mediaUrl,
-      mediaType
+      mediaType,
+      conversationId: convId
     });
 
     const populatedMessage = await Message.findByPk(newMessage.id, {
@@ -57,7 +60,7 @@ router.get('/gallery', async (req, res) => {
     }
 
     if (search) {
-      whereClause.text = { [Op.iLike]: `%${search}%` };
+      whereClause.content = { [Op.iLike]: `%${search}%` };
     }
 
     const media = await Message.findAll({
