@@ -544,6 +544,17 @@ function App() {
                           placeholder="your-code"
                         />
                       </div>
+                      <button 
+                        className="save-mini-btn" 
+                        style={{ height: '38px', whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                          const url = `${window.location.origin}?invite=${customInviteCode}`;
+                          navigator.clipboard.writeText(url);
+                          alert('Invite link copied!');
+                        }}
+                      >
+                        Copy Link
+                      </button>
                     </div>
                     <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Share this link to add friends to this specific chat.</p>
                   </div>
