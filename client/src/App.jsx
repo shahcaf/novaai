@@ -305,7 +305,7 @@ function App() {
 
         <div className="sidebar-profile">
           <div className="profile-avatar">
-            {user?.avatar ? <img src={user.avatar} style={{width: '100%', borderRadius: '50%'}} /> : (user?.username?.[0]?.toUpperCase() || 'U')}
+            {user?.avatar ? <img src={user.avatar} style={{width: '100%', borderRadius: '50%'}} /> : (user?.username ? user.username[0].toUpperCase() : 'U')}
           </div>
           <div className="profile-info">
             <div className="profile-name">{user?.username}</div>
