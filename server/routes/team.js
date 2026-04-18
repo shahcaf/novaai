@@ -77,6 +77,11 @@ router.post('/join/:code', verifyToken, async (req, res) => {
     });
 
     res.json({ message: 'Joined successfully', conversation });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Update conversation settings (Team Name / Code)
 router.put('/update/:id', verifyToken, async (req, res) => {
   try {
@@ -104,6 +109,8 @@ router.put('/update/:id', verifyToken, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
 // Delete a team chat (Owner only)
 router.delete('/delete/:id', verifyToken, async (req, res) => {
   try {
@@ -111,6 +118,8 @@ router.delete('/delete/:id', verifyToken, async (req, res) => {
     if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
     if (conversation.creatorId !== req.user.id) return res.status(403).json({ error: 'Permission denied' });
 
+    // Delete all members first, then the conversation
+    await ConversationMember.destroy({ where: { conversationId: req.params.id } });
     await conversation.destroy();
     res.json({ message: 'Team chat deleted successfully' });
   } catch (err) {
@@ -135,10 +144,11 @@ router.delete('/leave/:id', verifyToken, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
 // Get all members of a conversation
 router.get('/members/:id', verifyToken, async (req, res) => {
   try {
-    console.log('Fetching members for conversation:', req.params.id);
     const members = await ConversationMember.findAll({
       where: { conversationId: req.params.id },
       include: [{ 
@@ -146,7 +156,6 @@ router.get('/members/:id', verifyToken, async (req, res) => {
         attributes: ['id', 'username', 'avatar', 'email'] 
       }]
     });
-    console.log(`Found ${members.length} members.`);
     res.json(members);
   } catch (err) {
     console.error('Error fetching members:', err);
@@ -158,6 +167,7 @@ router.get('/members/:id', verifyToken, async (req, res) => {
 router.delete('/kick/:conversationId/:userId', verifyToken, async (req, res) => {
   try {
     const conversation = await Conversation.findByPk(req.params.conversationId);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
     if (conversation.creatorId !== req.user.id) return res.status(403).json({ error: 'Permission denied' });
 
     await ConversationMember.destroy({
@@ -174,11 +184,13 @@ router.put('/role/:conversationId/:userId', verifyToken, async (req, res) => {
   try {
     const { role } = req.body;
     const conversation = await Conversation.findByPk(req.params.conversationId);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
     if (conversation.creatorId !== req.user.id) return res.status(403).json({ error: 'Permission denied' });
 
     const membership = await ConversationMember.findOne({
       where: { conversationId: req.params.conversationId, userId: req.params.userId }
     });
+    if (!membership) return res.status(404).json({ error: 'Member not found' });
     membership.role = role;
     await membership.save();
     res.json(membership);

@@ -18,7 +18,7 @@ const ConversationMember = sequelize.define('ConversationMember', {
     references: { model: Conversation, key: 'id' }
   },
   role: {
-    type: DataTypes.ENUM('owner', 'admin', 'member'),
+    type: DataTypes.STRING,
     defaultValue: 'member'
   }
 }, {
