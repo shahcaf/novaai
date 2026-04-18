@@ -251,6 +251,24 @@ router.post('/', auth, async (req, res) => {
     const convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
 
     try {
+      // Save User Message
+      const userMsgContent = messages[messages.length - 1]; // Get the latest user message
+      if (userMsgContent && userMsgContent.role === 'user') {
+        const contentStr = Array.isArray(userMsgContent.content) 
+          ? userMsgContent.content.find(c => c.type === 'text')?.text || "[Media]" 
+          : userMsgContent.content;
+          
+        await Message.create({
+          content: contentStr,
+          isAI: false,
+          senderId: req.user.id,
+          conversationId: convId,
+          mediaUrl: userMsgContent.mediaUrl || '',
+          mediaType: userMsgContent.mediaType || 'none'
+        });
+      }
+
+      // Save AI Message
       await Message.create({
         content: aiContent,
         isAI: true,
