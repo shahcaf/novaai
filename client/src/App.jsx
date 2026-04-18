@@ -328,7 +328,8 @@ function App() {
       
       const currentMessages = activeConv?.messages || [];
       const chatMessages = [...currentMessages, finalUserMessage].map(m => {
-        const msgObj = { role: m.role, content: m.content || (m.mediaType === 'image' ? '[Image]' : `[User uploaded a ${m.mediaType || 'file'}]`) };
+        const role = m.role || (m.isAI ? 'assistant' : 'user');
+        const msgObj = { role, content: m.content || (m.mediaType === 'image' ? '[Image]' : `[User uploaded a ${m.mediaType || 'file'}]`) };
         if (m.mediaUrl && m.mediaType === 'image' && selectedModel.includes('vision')) {
           msgObj.mediaUrl = m.mediaUrl;
         }
@@ -402,7 +403,10 @@ function App() {
     try {
       const selectedModel = activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : activeModel.includes('Gemma') ? 'gemma2-9b-it' : 'llama3-8b-8192';
       const response = await axios.post(`${API_URL}/api/chat`, {
-        messages: newMessages.map(m => ({ role: m.role, content: m.content || `[User uploaded a ${m.mediaType || 'file'}]` })),
+        messages: newMessages.map(m => ({ 
+          role: m.role || (m.isAI ? 'assistant' : 'user'), 
+          content: m.content || `[User uploaded a ${m.mediaType || 'file'}]` 
+        })),
         model: selectedModel,
         conversationId: activeId
       }, {
