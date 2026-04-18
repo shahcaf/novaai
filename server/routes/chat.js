@@ -348,7 +348,7 @@ router.post('/', auth, async (req, res) => {
               try {
                 const { data: { text } } = await Tesseract.recognize(filePath, 'eng');
                 if (text && text.trim().length > 0) {
-                  return { role, content: `${enrichedText}\n\n[IMAGE OCR DATA (EXTRACTED TEXT)]:\n${text.trim()}` };
+                  return { role, content: `${enrichedText}\n\n[IMAGE OCR DATA (EXTRACTED TEXT)]:\n${text.trim()}\n\n[SYSTEM DIRECTIVE TO AI]: You have successfully extracted and 'opened' this file via OCR. You MUST explicitly acknowledge to the user that you are viewing the file and proceed to answer their questions based on the extracted text above.` };
                 }
               } catch (ocrErr) {
                 console.error('OCR Fallback error:', ocrErr);
