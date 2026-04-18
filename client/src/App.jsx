@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
-import { Plus, Send, Square, Trash2 } from 'lucide-react';
+import { Plus, Send, Square, Trash2, Share2, Users, Link as LinkIcon, Settings, LogOut } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -95,6 +95,54 @@ function App() {
       setConversations(resetConv);
       setActiveId('default');
       setIsSettingsOpen(false);
+    }
+  };
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteCode = params.get('invite');
+    if (inviteCode && user) {
+      handleJoinConversation(inviteCode);
+    }
+  }, [user]);
+
+  const handleJoinConversation = async (code) => {
+    try {
+      const res = await axios.post(`${API_URL}/api/team/join/${code}`, {}, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      alert(res.data.message);
+      // Remove param from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Refresh convs
+      fetchConversations();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchConversations = async () => {
+    // This could sync with backend in the future
+    // For now we keep localStorage but add sharing capability
+  };
+
+  const shareConversation = () => {
+    if (!activeConv.inviteCode) {
+      // If it's a local chat, we might want to "Upload" it to a team chat first
+      // For now, let's assume all chats can be shared by generating a code
+      const code = Math.random().toString(36).substring(7);
+      const newInviteCode = activeConv.inviteCode || code;
+      
+      setConversations(prev => prev.map(c => 
+        c.id === activeId ? { ...c, inviteCode: newInviteCode } : c
+      ));
+
+      const shareUrl = `${window.location.origin}?invite=${newInviteCode}`;
+      navigator.clipboard.writeText(shareUrl);
+      alert('Invite link copied to clipboard!');
+    } else {
+      const shareUrl = `${window.location.origin}?invite=${activeConv.inviteCode}`;
+      navigator.clipboard.writeText(shareUrl);
+      alert('Invite link copied to clipboard!');
     }
   };
 
@@ -310,11 +358,12 @@ function App() {
           <div className="profile-info">
             <div className="profile-name">{user?.username}</div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="logout-btn" onClick={() => setIsSettingsOpen(true)}>Settings</button>
-              <span style={{ color: 'var(--text-muted)' }}>•</span>
-              <button className="logout-btn" onClick={logout}>Sign out</button>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{user?.email}</span>
             </div>
           </div>
+          <button className="logout-btn" onClick={logout} title="Sign out" style={{ marginLeft: 'auto' }}>
+            <LogOut size={16} />
+          </button>
         </div>
       </aside>
 
@@ -417,9 +466,18 @@ function App() {
 
       <main className="chat-main" style={{ fontSize: fontSize === 'Small' ? '0.9rem' : fontSize === 'Large' ? '1.1rem' : '1rem' }}>
         <header className="chat-header">
-          <button className="menu-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>☰</button>
-          <div className="header-title">Nova AI</div>
-          <div style={{ width: 32 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button className="menu-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>☰</button>
+            <div className="header-title">Nova AI</div>
+          </div>
+          <div className="header-actions" style={{ display: 'flex', gap: '12px' }}>
+            <button className="menu-btn" onClick={shareConversation} title="Invite Friend to Chat">
+              <Share2 size={18} />
+            </button>
+            <button className="menu-btn" onClick={() => setIsSettingsOpen(true)} title="Settings">
+              <Settings size={18} />
+            </button>
+          </div>
         </header>
 
         <section className="messages-container">

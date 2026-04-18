@@ -8,7 +8,7 @@ const Message = sequelize.define('Message', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
-  text: {
+  content: {
     type: DataTypes.TEXT,
     defaultValue: ''
   },
@@ -18,10 +18,7 @@ const Message = sequelize.define('Message', {
   },
   mediaType: {
     type: DataTypes.STRING,
-    defaultValue: 'none',
-    validate: {
-      isIn: [['image', 'video', 'none']]
-    }
+    defaultValue: 'none'
   },
   isAI: {
     type: DataTypes.BOOLEAN,
@@ -34,5 +31,9 @@ const Message = sequelize.define('Message', {
 // Associations
 Message.belongsTo(User, { as: 'sender', foreignKey: 'senderId' });
 User.hasMany(Message, { foreignKey: 'senderId' });
+
+const Conversation = require('./Conversation');
+Message.belongsTo(Conversation, { foreignKey: 'conversationId' });
+Conversation.hasMany(Message, { foreignKey: 'conversationId' });
 
 module.exports = Message;

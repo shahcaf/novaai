@@ -9,10 +9,13 @@ const Groq = require('groq-sdk');
 const sequelize = require('./config/database');
 const User = require('./models/User');
 const Message = require('./models/Message');
+const Conversation = require('./models/Conversation');
+const ConversationMember = require('./models/ConversationMember');
 
 const authRoutes = require('./routes/auth');
 const chatRoutes = require('./routes/chat');
 const mediaRoutes = require('./routes/media');
+const teamRoutes = require('./routes/team');
 
 const app = express();
 const server = http.createServer(app);
@@ -34,6 +37,7 @@ app.get('/', (req, res) => res.send('Nova AI Server is Running'));
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/media', mediaRoutes);
+app.use('/api/team', teamRoutes);
 
 // Groq
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
