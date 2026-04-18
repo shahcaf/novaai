@@ -49,6 +49,7 @@ function App() {
   // Slash Command Menu
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const SLASH_COMMANDS = [
+    { cmd: '/upload', desc: 'Attach an image or document', icon: '📁' },
     { cmd: '/imagine', desc: 'Generate a high-end AI image', icon: '🎨' },
     { cmd: '/clear', desc: 'Purge this conversation history', icon: '🗑️' },
     { cmd: '/new', desc: 'Start a brand new conversation', icon: '✨' },
@@ -974,13 +975,6 @@ function App() {
             </div>
           )}
           <div className="input-wrapper">
-            <button 
-              className="upload-plus-btn" 
-              onClick={() => fileInputRef.current.click()}
-              title="Add files or pictures"
-            >
-              <Plus size={20} />
-            </button>
             <input 
               type="file" 
               ref={fileInputRef} 
@@ -1002,6 +996,12 @@ function App() {
                       key={i} 
                       className="slash-menu-item"
                       onClick={() => {
+                        if (c.cmd === '/upload') {
+                          setInput('');
+                          setShowSlashMenu(false);
+                          setTimeout(() => fileInputRef.current?.click(), 100);
+                          return;
+                        }
                         if (c.cmd === '/clear') deleteConversation(activeId, { stopPropagation: () => {} });
                         else if (c.cmd === '/new') createNewConversation();
                         else if (c.cmd === '/settings') setIsSettingsOpen(true);
@@ -1023,7 +1023,7 @@ function App() {
               ref={textareaRef}
               className="chat-input"
               rows={1}
-              style={{ paddingLeft: '48px' }}
+              style={{ paddingLeft: '16px' }}
               placeholder="Message Nova AI... (type / for commands)"
               value={input}
               onChange={e => {
