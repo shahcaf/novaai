@@ -2,7 +2,8 @@
 import React, { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const isLocal = window.location.hostname === 'localhost';
+const API_BASE_URL = isLocal ? 'http://localhost:5000' : (import.meta.env.VITE_API_URL || 'https://novaai-zeta.vercel.app');
 
 export const AuthContext = createContext();
 
