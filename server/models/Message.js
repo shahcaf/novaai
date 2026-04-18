@@ -33,7 +33,7 @@ Message.belongsTo(User, { as: 'sender', foreignKey: 'senderId' });
 User.hasMany(Message, { foreignKey: 'senderId' });
 
 const Conversation = require('./Conversation');
-Message.belongsTo(Conversation, { foreignKey: 'conversationId' });
-Conversation.hasMany(Message, { foreignKey: 'conversationId' });
+Message.belongsTo(Conversation, { foreignKey: 'conversationId', onDelete: 'CASCADE' });
+Conversation.hasMany(Message, { foreignKey: 'conversationId', onDelete: 'CASCADE', hooks: true });
 
 module.exports = Message;

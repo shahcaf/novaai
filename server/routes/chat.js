@@ -83,8 +83,6 @@ router.delete('/conversations/:id', auth, async (req, res) => {
     });
     if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
     
-    // Delete all messages in this conversation first
-    await Message.destroy({ where: { conversationId: req.params.id } });
     await conversation.destroy();
     res.json({ message: 'Conversation deleted' });
   } catch (err) {
