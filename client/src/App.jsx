@@ -212,9 +212,11 @@ function App() {
         setFilePreview(null);
       }
 
-      const selectedModel = activeModel.includes('Vision') ? 'llama-3.2-11b-vision-preview' : 
-                            activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : 
-                            activeModel.includes('Llama 3.1') ? 'llama-3.1-8b-instant' : 
+      const selectedModel = activeModel.includes('Vision (11B)') ? 'llama-3.2-11b-vision-preview' : 
+                            activeModel.includes('Vision (90B)') ? 'llama-3.2-90b-vision-preview' :
+                            activeModel.includes('3.3 (70B)') ? 'llama-3.3-70b-versatile' : 
+                            activeModel.includes('3.1 (405B)') ? 'llama-3.1-405b-reasoning' :
+                            activeModel.includes('3.1 (8B)') ? 'llama-3.1-8b-instant' : 
                             activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : 'llama3-8b-8192';
       
       const chatMessages = [...activeConv.messages, finalUserMessage].map(m => {
@@ -496,8 +498,10 @@ function App() {
                   <div className="setting-item">
                     <div className="setting-label">Preferred Model</div>
                     <select value={activeModel} onChange={e => setActiveModel(e.target.value)} className="setting-select">
-                      <option>Llama 3.2 Vision</option>
+                      <option>Llama 3.2 Vision (11B)</option>
+                      <option>Llama 3.2 Vision (90B) - Pro</option>
                       <option>Llama 3.3 (70B) - Versatile</option>
+                      <option>Llama 3.1 (405B) - Extreme</option>
                       <option>Llama 3.1 (8B) - Instant</option>
                       <option>Mixtral 8x7B</option>
                     </select>
