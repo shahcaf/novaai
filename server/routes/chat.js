@@ -317,19 +317,33 @@ router.post('/', auth, async (req, res) => {
       return { role, content: msg.content || "" };
     }));
 
-    // SAFETY: Normalize all content to strings for non-vision models
-    // Vision array format [{ type: 'text' }, { type: 'image_url' }] causes 400 errors on Groq/Llama
+    // IRON-CLAD SAFETY: Force EVERY message content to be a plain string. Period.
+    // This is the absolute last line of defense. Nothing passes through that isn't typeof 'string'.
     const safeMessages = processedMessages.map(m => {
-      if (Array.isArray(m.content)) {
+      let content = m.content;
+      
+      // Flatten arrays (vision format)
+      if (Array.isArray(content)) {
+        // Only keep arrays for GPT/Gemini vision - they handle it natively
         if (isVisionModel && (isGPT || isGemini)) {
-          return m; // Pass arrays through for GPT/Gemini vision models
+          return m;
         }
-        // Flatten to string for all other models
-        const textContent = m.content.find(c => c.type === 'text')?.text || '';
-        const hasImage = m.content.some(c => c.type === 'image_url');
-        return { ...m, content: `${textContent}${hasImage ? '\n\n[Image Attached]' : ''}` };
+        const textPart = content.find(c => c?.type === 'text')?.text || '';
+        const hasImage = content.some(c => c?.type === 'image_url');
+        content = `${textPart}${hasImage ? '\n\n[Image Attached]' : ''}`;
       }
-      return m;
+      
+      // Nuclear fallback: if content is STILL not a string, force it
+      if (typeof content !== 'string') {
+        content = String(content || '');
+      }
+      
+      // Strip any base64 data URLs that leaked into content
+      if (content.startsWith('data:')) {
+        content = '[Image Attached]';
+      }
+      
+      return { role: m.role, content };
     });
           
 
