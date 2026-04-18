@@ -94,7 +94,8 @@ router.get('/history/:conversationId', auth, async (req, res) => {
     const messages = await Message.findAll({
       where: { conversationId },
       include: [{ model: User, as: 'sender', attributes: ['username', 'avatar'] }],
-      order: [['createdAt', 'ASC']]
+      order: [['createdAt', 'ASC']],
+      limit: 100 // Prevent massive payload loading times
     });
     res.json(messages);
   } catch (err) {
@@ -107,7 +108,7 @@ router.post('/', auth, async (req, res) => {
   try {
     const { messages, model } = req.body;
     
-    const activeModel = model || "llama-3.3-70b-versatile";
+    const activeModel = model || "llama-3.1-8b-instant";
     const isVisionModel = activeModel.includes('vision') || activeModel.startsWith('gpt-4o') || activeModel.includes('gemini');
     const isGPT = activeModel.startsWith('gpt-');
     const isGemini = activeModel.includes('gemini');
@@ -237,13 +238,13 @@ router.post('/', auth, async (req, res) => {
     } catch (apiErr) {
       console.error('Final AI fallback triggered:', apiErr.message);
       const fallbackCompletion = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "llama-3.1-8b-instant",
         messages: [{ role: "system", content: "You are Nova AI." }, ...processedMessages],
         temperature: 0.7,
         max_tokens: 1024,
       });
       aiContent = fallbackCompletion.choices[0].message.content;
-      actualModelUsed = "Llama 3.3 (Fallback)";
+      actualModelUsed = "Llama 3.1 (Fast Fallback)";
     }
     
     // Save to DB
