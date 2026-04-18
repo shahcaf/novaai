@@ -324,6 +324,10 @@ function App() {
           <Settings size={18} /> Settings
         </button>
 
+        <button className="sidebar-action-btn" onClick={shareConversation} title="Invite Friends / Team Link">
+          <Users size={18} /> Invite to Team
+        </button>
+
         <div className="sidebar-scroll">
           {Object.entries(grouped).map(([label, convs]) => (
             <div key={label}>
