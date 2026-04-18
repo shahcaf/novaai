@@ -118,8 +118,22 @@ router.get('/history/:conversationId', auth, async (req, res) => {
 // Chat with AI
 router.post('/', auth, async (req, res) => {
   try {
-    const { messages, model, userName, aiSpeed, customPersona } = req.body;
+    let { messages, model, userName, aiSpeed, customPersona } = req.body;
     
+    // HARDENED INPUT SANITIZATION: Ensure all message content is a string at entry point.
+    // This prevents 400 "content must be a string" errors caused by vision-format arrays
+    // leaking from client-side state into non-vision API calls.
+    messages = (messages || []).map(m => {
+      if (Array.isArray(m.content)) {
+        const text = m.content.find(c => c.type === 'text')?.text || '';
+        return { ...m, content: text };
+      }
+      if (!m.role) {
+        return { ...m, role: m.isAI ? 'assistant' : 'user' };
+      }
+      return m;
+    }).filter(m => m.role && (m.content || m.mediaUrl)); // strip empty/invalid messages
+
     const activeModel = model || "llama-3.1-8b-instant";
     const isVisionModel = activeModel.includes('vision') || activeModel.startsWith('gpt-4o') || activeModel.includes('gemini');
     const isGPT = activeModel.startsWith('gpt-') || activeModel.startsWith('o1') || activeModel.startsWith('o3');
