@@ -170,9 +170,12 @@ router.post('/', auth, async (req, res) => {
         content = String(content || '');
       }
       
-      // If this message has a media attachment, inject context into content
-      // so the AI knows about it even after forceStringMessages strips extra fields
-      if (m.mediaUrl && typeof m.mediaUrl === 'string' && m.mediaUrl.length > 1) {
+      const role = m.role || (m.isAI ? 'assistant' : 'user');
+      
+      // If this is a USER message with a media attachment, inject context into content
+      // so the AI knows about it even after forceStringMessages strips extra fields.
+      // We EXCLUDE assistant messages to prevent hallucination loops.
+      if (role === 'user' && m.mediaUrl && typeof m.mediaUrl === 'string' && m.mediaUrl.length > 1) {
         const fileName = m.mediaUrl.split('/').pop() || 'file';
         if (!content.includes('PLATFORM NOTIFICATION')) {
           const attachType = (m.mediaType === 'image') ? 'image' : (m.mediaType || 'file');
@@ -180,7 +183,6 @@ router.post('/', auth, async (req, res) => {
         }
       }
       
-      const role = m.role || (m.isAI ? 'assistant' : 'user');
       if (!role) return null;
       return { ...m, role, content };
     }).filter(m => m && m.role && (m.content || m.mediaUrl)); // strip empty/invalid messages
