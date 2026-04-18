@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
+const axios = require('axios');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -11,11 +12,9 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 router.post('/google', async (req, res) => {
   try {
     const { token } = req.body;
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
-    const { name, email, picture } = ticket.getPayload();
+    // Fetch user info using the access token
+    const googleRes = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
+    const { name, email, picture } = googleRes.data;
 
     let user = await User.findOne({ where: { email } });
     if (!user) {
