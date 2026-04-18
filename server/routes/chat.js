@@ -170,7 +170,20 @@ router.post('/', auth, async (req, res) => {
       
       const cleanPrompt = prompt.trim();
       const encodedPrompt = encodeURIComponent(cleanPrompt);
-      const convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
+      
+      // Guarantee a valid conversationId - auto-create if missing
+      let convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
+      if (!convId) {
+        const newConv = await Conversation.create({ title: cleanPrompt.slice(0, 40) || 'Image Generation', creatorId: req.user.id });
+        convId = newConv.id;
+      } else {
+        // Validate it actually exists
+        const exists = await Conversation.findOne({ where: { id: convId, creatorId: req.user.id } });
+        if (!exists) {
+          const newConv = await Conversation.create({ title: cleanPrompt.slice(0, 40) || 'Image Generation', creatorId: req.user.id });
+          convId = newConv.id;
+        }
+      }
       
       let imageUrl = "";
       let generatorModel = "";
@@ -383,8 +396,20 @@ router.post('/', auth, async (req, res) => {
       actualModelUsed = "Llama 3.1 (Fast Fallback)";
     }
     
-    // Save to DB
-    const convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
+    // Save to DB — guarantee a valid conversationId exists before writing messages
+    let convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
+    if (!convId) {
+      const firstUserMsg = messages.find(m => m.role === 'user');
+      const autoTitle = (typeof firstUserMsg?.content === 'string' ? firstUserMsg.content : 'New Chat').slice(0, 40);
+      const newConv = await Conversation.create({ title: autoTitle, creatorId: req.user.id });
+      convId = newConv.id;
+    } else {
+      const exists = await Conversation.findOne({ where: { id: convId, creatorId: req.user.id } });
+      if (!exists) {
+        const newConv = await Conversation.create({ title: 'New Chat', creatorId: req.user.id });
+        convId = newConv.id;
+      }
+    }
 
     try {
       // Save User Message
