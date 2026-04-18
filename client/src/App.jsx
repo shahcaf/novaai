@@ -668,14 +668,25 @@ function App() {
         <section className="messages-container">
           {(!activeConv || !activeConv.messages?.length) ? (
             <div className="empty-state">
-              <div className="empty-logo">N</div>
-              <h1 className="empty-title">How can I help you?</h1>
-              <p className="empty-subtitle">Currently using <span>{activeModel}</span> assistant.</p>
+              <div className="hero-atmosphere"></div>
+              <div className="empty-logo-wrapper">
+                <div className="empty-logo">N</div>
+                <div className="empty-logo-glow"></div>
+              </div>
+              <h1 className="empty-title">Welcome to the future of AI.</h1>
+              <div className="status-pill">
+                <div className="status-dot pulsed"></div>
+                Nova Gen-4 is active · <span>{activeModel}</span>
+              </div>
+              
               <div className="suggestions-grid">
                 {SUGGESTIONS.map((s, i) => (
                   <button key={i} className="suggestion-card" onClick={() => handleSend(s.text)}>
-                    <strong>{s.title}</strong>
-                    {s.text}
+                    <div className="suggestion-icon">{s.title.split(' ')[0]}</div>
+                    <div className="suggestion-body">
+                      <strong>{s.title.split(' ').slice(1).join(' ')}</strong>
+                      <span>{s.text}</span>
+                    </div>
                   </button>
                 ))}
               </div>
