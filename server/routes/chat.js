@@ -5,19 +5,94 @@ const path = require('path');
 const auth = require('../middleware/auth');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const Conversation = require('../models/Conversation');
 const Groq = require('groq-sdk');
 const OpenAI = require('openai');
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const pdf = require('pdf-parse');
+const mammoth = require('mammoth');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'dummy' });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy');
 
-// Get Chat History
-router.get('/history', auth, async (req, res) => {
+// Get All User Conversations
+router.get('/conversations', auth, async (req, res) => {
   try {
+    const conversations = await Conversation.findAll({
+      where: { creatorId: req.user.id },
+      order: [['updatedAt', 'DESC']]
+    });
+    res.json(conversations);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create New Conversation
+router.post('/conversations', auth, async (req, res) => {
+  try {
+    const { title } = req.body;
+    const conversation = await Conversation.create({
+      title: title || 'New Chat',
+      creatorId: req.user.id
+    });
+    res.json(conversation);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Rename Conversation
+router.put('/conversations/:id', auth, async (req, res) => {
+  try {
+    const { title } = req.body;
+    const conversation = await Conversation.findOne({
+      where: { id: req.params.id, creatorId: req.user.id }
+    });
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+    
+    conversation.title = title;
+    await conversation.save();
+    res.json(conversation);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete Conversation
+router.delete('/conversations/:id', auth, async (req, res) => {
+  try {
+    const conversation = await Conversation.findOne({
+      where: { id: req.params.id, creatorId: req.user.id }
+    });
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+    
+    // Delete all messages in this conversation first
+    await Message.destroy({ where: { conversationId: req.params.id } });
+    await conversation.destroy();
+    res.json({ message: 'Conversation deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get Chat History for a Specific Conversation
+router.get('/history/:conversationId', auth, async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    
+    // Verify conversation belongs to user if it's not the default one
+    if (conversationId !== 'default') {
+      const conv = await Conversation.findOne({
+        where: { id: conversationId, creatorId: req.user.id }
+      });
+      if (!conv) return res.status(403).json({ error: 'Access denied' });
+    }
+
     const messages = await Message.findAll({
+      where: { conversationId },
       include: [{ model: User, as: 'sender', attributes: ['username', 'avatar'] }],
       order: [['createdAt', 'ASC']]
     });
@@ -38,7 +113,7 @@ router.post('/', auth, async (req, res) => {
     const isGemini = activeModel.includes('gemini');
 
     // Prepare multi-modal/contextual messages
-    const processedMessages = messages.map(msg => {
+    const processedMessages = await Promise.all(messages.map(async (msg) => {
       if (msg.mediaUrl) {
         const relativePath = msg.mediaUrl.startsWith('/') ? msg.mediaUrl.slice(1) : msg.mediaUrl;
         const filePath = path.join(__dirname, '..', relativePath);
@@ -59,20 +134,47 @@ router.post('/', auth, async (req, res) => {
             };
           }
           
-          // Case 2: Code/Text Reading (Context Injection)
+          // Case 2: Document Parsing (PDF)
+          if (ext === '.pdf') {
+            try {
+              const dataBuffer = fs.readFileSync(filePath);
+              const data = await pdf(dataBuffer);
+              return {
+                role: msg.role,
+                content: `${msg.content || ""}\n\n[DOCUMENT ATTACHMENT: ${path.basename(filePath)}]\n${data.text}`
+              };
+            } catch (pdfErr) {
+              console.error('PDF Parse Error:', pdfErr);
+            }
+          }
+
+          // Case 3: Document Parsing (DOCX)
+          if (ext === '.docx') {
+            try {
+              const result = await mammoth.extractRawText({ path: filePath });
+              return {
+                role: msg.role,
+                content: `${msg.content || ""}\n\n[DOCUMENT ATTACHMENT: ${path.basename(filePath)}]\n${result.value}`
+              };
+            } catch (docxErr) {
+              console.error('DOCX Parse Error:', docxErr);
+            }
+          }
+          
+          // Case 4: Code/Text Reading (Context Injection)
           const textExtensions = ['.js', '.jsx', '.ts', '.tsx', '.json', '.txt', '.py', '.html', '.css', '.md'];
           if (textExtensions.includes(ext)) {
             const fileContent = fs.readFileSync(filePath, 'utf8');
-            const truncatedContent = fileContent.length > 5000 ? fileContent.slice(0, 5000) + "...[content truncated]" : fileContent;
+            const truncatedContent = fileContent.length > 10000 ? fileContent.slice(0, 10000) + "...[content truncated]" : fileContent;
             return {
               role: msg.role,
-              content: `${msg.content || ""}\n\n[FILE ATTACHMENT: ${path.basename(filePath)}]\n\`\`\`${ext.slice(1)}\n${truncatedContent}\n\`\`\``
+              content: `${msg.content || ""}\n\n[FILE ATTACHMENT: ${path.basename(filePath)}]\n\`\`\`${ext.slice(1) || 'text'}\n${truncatedContent}\n\`\`\``
             };
           }
         }
       }
       return { role: msg.role, content: msg.content || "" };
-    });
+    }));
 
     let aiContent = "";
     let actualModelUsed = activeModel;
@@ -94,11 +196,33 @@ router.post('/', auth, async (req, res) => {
           } else throw gptErr;
         }
       } else if (isGemini) {
-        const genModel = genAI.getGenerativeModel({ model: activeModel });
-        const contents = processedMessages.map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: Array.isArray(m.content) ? m.content[0].text : m.content }]
-        }));
+        const genModel = genAI.getGenerativeModel({ 
+          model: activeModel,
+          systemInstruction: "You are Nova AI, a helpful and friendly AI assistant powered by Google Gemini. Use markdown for all responses."
+        });
+        
+        const contents = processedMessages.map(m => {
+          const role = m.role === 'assistant' ? 'model' : 'user';
+          if (Array.isArray(m.content)) {
+            const parts = m.content.map(part => {
+              if (part.type === 'text') return { text: part.text };
+              if (part.type === 'image_url') {
+                const base64Data = part.image_url.url.split(',')[1];
+                const mimeType = part.image_url.url.split(';')[0].split(':')[1];
+                return {
+                  inlineData: {
+                    mimeType: mimeType,
+                    data: base64Data
+                  }
+                };
+              }
+              return null;
+            }).filter(p => p !== null);
+            return { role, parts };
+          }
+          return { role, parts: [{ text: m.content }] };
+        });
+
         const result = await genModel.generateContent({ contents });
         aiContent = result.response.text();
       } else {

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
-import { Plus, Send, Square, Trash2, Settings, LogOut, Copy, RefreshCw, Edit2, Check, X } from 'lucide-react';
+import { Plus, Send, Square, Trash2, Settings, LogOut, Copy, RefreshCw, Edit2, Check, X, MessageSquare, Loader2 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -17,40 +17,8 @@ const SUGGESTIONS = [
 
 function App() {
   const { user, logout, updateProfile } = useContext(AuthContext);
-  const [conversations, setConversations] = useState(() => {
-    const saved = localStorage.getItem('nova_convs');
-    let convs = saved ? JSON.parse(saved) : [{ 
-      id: '00000000-0000-4000-8000-000000000000', // Valid UUID v4 variant for internal default
-      title: 'New Chat', 
-      messages: [], 
-      createdAt: new Date().toISOString() 
-    }];
-    
-    // Migration: If anyone has 'default' as an ID, change it to the UUID
-    let needsMigration = false;
-    convs = convs.map(c => {
-      if (c.id === 'default') {
-        needsMigration = true;
-        return { ...c, id: '00000000-0000-4000-8000-000000000000' };
-      }
-      return c;
-    });
-    
-    if (needsMigration && saved) {
-      localStorage.setItem('nova_convs', JSON.stringify(convs));
-    }
-    
-    return convs;
-  });
-  const [activeId, setActiveId] = useState(() => {
-    const saved = localStorage.getItem('nova_convs');
-    if (saved) {
-      const convs = JSON.parse(saved);
-      const firstId = convs[0]?.id;
-      return firstId === 'default' ? '00000000-0000-4000-8000-000000000000' : (firstId || '00000000-0000-4000-8000-000000000000');
-    }
-    return '00000000-0000-4000-8000-000000000000';
-  });
+  const [conversations, setConversations] = useState([]);
+  const [activeId, setActiveId] = useState(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -58,9 +26,10 @@ function App() {
   const [editingId, setEditingId] = useState(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [copiedIndex, setCopiedIndex] = useState(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Settings State
-  const [activeModel, setActiveModel] = useState('Llama 3.2 Vision');
+  const [activeModel, setActiveModel] = useState('Gemini 1.5 Pro');
   const [fontSize, setFontSize] = useState('Medium');
   const [theme, setTheme] = useState('Dark');
   const [aiSpeed, setAiSpeed] = useState('Fast');
@@ -75,10 +44,45 @@ function App() {
   const fileInputRef = useRef(null);
   const abortControllerRef = useRef(null);
 
-  const activeConv = conversations.find(c => c.id === activeId) || conversations[0];
+  const activeConv = conversations.find(c => c.id === activeId);
 
   const fetchConversations = async () => {
-    // Team features removed. Solo mode only.
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/api/chat/conversations`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const convs = res.data;
+      setConversations(convs);
+      
+      if (convs.length > 0 && !activeId) {
+        setActiveId(convs[0].id);
+      } else if (convs.length === 0) {
+        // Create a default one if none exist
+        await createNewConversation();
+      }
+    } catch (err) {
+      console.error('Failed to fetch conversations:', err);
+    } finally {
+      setIsInitialLoad(false);
+    }
+  };
+
+  const fetchHistory = async (id) => {
+    if (!id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_URL}/api/chat/history/${id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      setConversations(prev => prev.map(c => 
+        c.id === id ? { ...c, messages: res.data } : c
+      ));
+    } catch (err) {
+      console.error('Failed to fetch history:', err);
+    }
   };
 
   useEffect(() => {
@@ -88,8 +92,10 @@ function App() {
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('nova_convs', JSON.stringify(conversations.filter(c => !c.isShared)));
-  }, [conversations]);
+    if (activeId && activeConv && !activeConv.messages) {
+      fetchHistory(activeId);
+    }
+  }, [activeId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -100,51 +106,68 @@ function App() {
   }, [editingId]);
 
 
-  const createNewConversation = () => {
-    // If current conversation is already empty, just switch to it and close sidebar
-    const current = conversations.find(c => c.id === activeId);
-    if (current && current.messages.length === 0) {
+  const createNewConversation = async () => {
+    try {
+      // Prevent creating multiple empty chats if current active one is already empty
+      const current = conversations.find(c => c.id === activeId);
+      if (current && (!current.messages || current.messages.length === 0)) {
+        setIsSidebarOpen(false);
+        return current;
+      }
+
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${API_URL}/api/chat/conversations`, { title: 'New Chat' }, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const newConv = { ...res.data, messages: [] };
+      setConversations([newConv, ...conversations]);
+      setActiveId(newConv.id);
       setIsSidebarOpen(false);
-      return;
+      return newConv;
+    } catch (err) {
+      alert('Failed to create new chat');
     }
-
-    const newConv = {
-      id: uuidv4(),
-      title: 'New Chat',
-      messages: [],
-      createdAt: new Date().toISOString(),
-      isShared: false
-    };
-    setConversations([newConv, ...conversations]);
-    setActiveId(newConv.id);
-    setIsSidebarOpen(false);
   };
 
-  const deleteConversation = (id, e) => {
+  const deleteConversation = async (id, e) => {
     e.stopPropagation();
-    const filtered = conversations.filter(c => c.id !== id);
-    if (!filtered.length) {
-      createNewConversation();
-    } else {
-      if (activeId === id) setActiveId(filtered[0].id);
-      setConversations(filtered);
+    if (!window.confirm('Delete this conversation?')) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_URL}/api/chat/conversations/${id}`, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      const filtered = conversations.filter(c => c.id !== id);
+      if (!filtered.length) {
+        await createNewConversation();
+      } else {
+        if (activeId === id) setActiveId(filtered[0].id);
+        setConversations(filtered);
+      }
+    } catch (err) {
+      alert('Failed to delete conversation');
     }
   };
 
-  const clearAllHistory = () => {
+  const clearAllHistory = async () => {
     if (window.confirm('Are you sure you want to delete ALL chat history? This cannot be undone.')) {
-      const resetConv = [{ 
-        id: '00000000-0000-4000-8000-000000000000', 
-        title: 'New Chat', 
-        messages: [], 
-        createdAt: new Date().toISOString() 
-      }];
-      setConversations(resetConv);
-      setActiveId('00000000-0000-4000-8000-000000000000');
-      setIsSettingsOpen(false);
+      try {
+        const token = localStorage.getItem('token');
+        for (const conv of conversations) {
+          await axios.delete(`${API_URL}/api/chat/conversations/${conv.id}`, {
+            headers: { 'x-auth-token': token }
+          });
+        }
+        await fetchConversations();
+        setIsSettingsOpen(false);
+      } catch (err) {
+        alert('Failed to clear history');
+      }
     }
   };
-
 
   const startEditing = (conv, e) => {
     e.stopPropagation();
@@ -152,15 +175,22 @@ function App() {
     setEditingTitle(conv.title);
   };
 
-  const saveTitle = (id) => {
-    if (!editingTitle.trim()) return setEditingId(null);
-    setConversations(conversations.map(c => 
-      c.id === id ? { ...c, title: editingTitle } : c
-    ));
-    setEditingId(null);
+  const saveTitle = async (id) => {
+    if (!editingTitle.trim() || editingTitle === activeConv?.title) return setEditingId(null);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API_URL}/api/chat/conversations/${id}`, { title: editingTitle }, {
+        headers: { 'x-auth-token': token }
+      });
+      
+      setConversations(conversations.map(c => 
+        c.id === id ? { ...c, title: editingTitle } : c
+      ));
+      setEditingId(null);
+    } catch (err) {
+      alert('Failed to rename conversation');
+    }
   };
-
-
 
   const handleSend = async (text = input) => {
     if (!text.trim() || isLoading) return;
@@ -177,7 +207,7 @@ function App() {
     
     // Append locally for immediate feedback
     setConversations(prev => prev.map(c => 
-      c.id === activeId ? { ...c, messages: [...c.messages, userMessage] } : c
+      c.id === activeId ? { ...c, messages: [...(c.messages || []), userMessage] } : c
     ));
     
     setInput('');
@@ -230,10 +260,10 @@ function App() {
                             activeModel.includes('3.1 (8B)') ? 'llama-3.1-8b-instant' : 
                             activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : 'llama-3.3-70b-versatile';
       
-      const chatMessages = [...activeConv.messages, finalUserMessage].map(m => {
+      const chatMessages = [...(activeConv.messages || []), finalUserMessage].map(m => {
         const msgObj = { role: m.role, content: m.content || (m.mediaType === 'image' ? '[Image]' : `[User uploaded a ${m.mediaType || 'file'}]`) };
         if (m.mediaUrl && m.mediaType === 'image' && selectedModel.includes('vision')) {
-          msgObj.mediaUrl = m.mediaUrl; // Pass URL to backend for vision processing
+          msgObj.mediaUrl = m.mediaUrl;
         }
         return msgObj;
       });
@@ -255,7 +285,7 @@ function App() {
       };
 
       setConversations(prev => prev.map(c => 
-        c.id === activeId ? { ...c, messages: [...c.messages, aiMessage] } : c
+        c.id === activeId ? { ...c, messages: [...(c.messages || []), aiMessage] } : c
       ));
     } catch (err) {
       console.error(err);
@@ -290,9 +320,6 @@ function App() {
 
   const handleRegenerate = async (index) => {
     if (isLoading) return;
-    
-    // We want to regenerate the AI message at `index`, which means we delete it and anything after,
-    // and re-send the conversation history up to the user message that prompted it.
     const newMessages = activeConv.messages.slice(0, index);
     
     setConversations(prev => prev.map(c => 
@@ -306,7 +333,8 @@ function App() {
       const selectedModel = activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : activeModel.includes('Gemma') ? 'gemma2-9b-it' : 'llama3-8b-8192';
       const response = await axios.post(`${API_URL}/api/chat`, {
         messages: newMessages.map(m => ({ role: m.role, content: m.content || `[User uploaded a ${m.mediaType || 'file'}]` })),
-        model: selectedModel
+        model: selectedModel,
+        conversationId: activeId
       }, {
         headers: { 'x-auth-token': localStorage.getItem('token') },
         signal: abortControllerRef.current.signal
@@ -378,6 +406,15 @@ function App() {
     }
   };
 
+  if (isInitialLoad && user) {
+    return (
+      <div className="initial-loader">
+        <Loader2 className="spinning" size={48} />
+        <p>Syncing Nova Pulse...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container" data-theme={theme.toLowerCase()}>
       <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
@@ -406,7 +443,7 @@ function App() {
                   className={`conv-item ${conv.id === activeId ? 'active' : ''}`}
                   onClick={() => editingId !== conv.id && setActiveId(conv.id)}
                 >
-                  <span className="conv-icon">💬</span>
+                  <MessageSquare size={14} style={{ opacity: 0.5 }} />
                   {editingId === conv.id ? (
                     <input 
                       ref={editInputRef}
@@ -419,8 +456,8 @@ function App() {
                   ) : (
                     <span className="conv-title">{conv.title}</span>
                   )}
-                  <button className="conv-action-btn" onClick={e => startEditing(conv, e)}>✏️</button>
-                  <button className="conv-action-btn conv-delete" onClick={e => deleteConversation(conv.id, e)}>✕</button>
+                  <button className="conv-action-btn" onClick={e => startEditing(conv, e)} title="Rename">✏️</button>
+                  <button className="conv-action-btn conv-delete" onClick={e => deleteConversation(conv.id, e)} title="Delete">✕</button>
                 </div>
               ))}
             </div>
@@ -509,13 +546,13 @@ function App() {
                   <div className="setting-item">
                     <div className="setting-label">Preferred Model</div>
                     <select value={activeModel} onChange={e => setActiveModel(e.target.value)} className="setting-select">
-                      <option>Llama 3.2 Vision (11B)</option>
-                      <option>Llama 3.2 Vision (90B) - Pro</option>
-                      <option>GPT-4o - Premium</option>
-                      <option>GPT-4o-mini - Fast</option>
                       <option>Gemini 1.5 Pro</option>
                       <option>Gemini 1.5 Flash</option>
+                      <option>GPT-4o - Premium</option>
+                      <option>GPT-4o-mini - Fast</option>
                       <option>Llama 3.3 (70B) - Versatile</option>
+                      <option>Llama 3.2 Vision (11B)</option>
+                      <option>Llama 3.2 Vision (90B) - Pro</option>
                       <option>Llama 3.1 (405B) - Extreme</option>
                       <option>Llama 3.1 (8B) - Instant</option>
                     </select>
@@ -538,7 +575,7 @@ function App() {
                 </div>
 
                 <div className="setting-footer">
-                  <div className="v-info">Nova Cloud · v2.1.5 · Build 502</div>
+                  <div className="v-info">Nova Cloud · v2.2.0 · Production Stable</div>
                 </div>
               </div>
             </motion.div>
@@ -561,7 +598,7 @@ function App() {
         </header>
 
         <section className="messages-container">
-          {!activeConv?.messages.length ? (
+          {(!activeConv || !activeConv.messages?.length) ? (
             <div className="empty-state">
               <div className="empty-logo">N</div>
               <h1 className="empty-title">How can I help you?</h1>
@@ -611,7 +648,7 @@ function App() {
                       </div>
                       {msg.isAI && (
                         <div className="message-model-badge" style={{ fontSize: '9px', opacity: 0.4, marginTop: '8px', textAlign: 'right', fontStyle: 'italic' }}>
-                          {msg.metadata ? (JSON.parse(msg.metadata).model) : (msg.sender?.username === 'Nova AI' ? 'Nova Assistant' : '')}
+                          {msg.metadata ? (JSON.parse(msg.metadata).model) : (msg.sender?.username === 'Nova AI' ? 'Nova Assistant' : (msg.metadata ? msg.metadata : ''))}
                         </div>
                       )}
                       <div className="msg-actions">
