@@ -1096,3 +1096,34 @@ body {
   padding: 0;
   color: #e2e8f0;
 }
+/* ─── Typing Indicator ───────────────────────── */
+.typing-container {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px !important;
+  width: fit-content;
+}
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: typing-pulse 1s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-pulse {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ─── Sidebar Search ────────────────────────── */
+.sidebar-search-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+.sidebar-search-input::placeholder {
+  color: var(--text-muted);
+}

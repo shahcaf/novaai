@@ -120,7 +120,7 @@ router.get('/history/:conversationId', auth, async (req, res) => {
 // Chat with AI
 router.post('/', auth, async (req, res) => {
   try {
-    const { messages, model, userName, aiSpeed } = req.body;
+    const { messages, model, userName, aiSpeed, customPersona } = req.body;
     
     const activeModel = model || "llama-3.1-8b-instant";
     const isVisionModel = activeModel.includes('vision') || activeModel.startsWith('gpt-4o') || activeModel.includes('gemini');
@@ -130,6 +130,11 @@ router.post('/', auth, async (req, res) => {
     // Build the dynamic personality matrix based on user preferences
     let basePrompt = `You are Nova AI, a highly advanced, ultra-premium AI assistant created by the Nova Cloud team. You are currently speaking with a user named "${userName || 'User'}". Always be extremely helpful, professional, and display high intelligence.`;
     
+    // Inject Custom Persona if provided
+    if (customPersona && customPersona.trim().length > 0) {
+      basePrompt += `\n\n[USER CUSTOM DIRECTIVE]: ${customPersona}\n\n`;
+    }
+
     if (aiSpeed === 'Precise (Strict)') {
       basePrompt += " You must be extremely concise, logical, and strictly factual. Avoid conversational filler. Prioritize absolute accuracy and deep reasoning over speed.";
     } else if (aiSpeed === 'Creative (Unfiltered)') {

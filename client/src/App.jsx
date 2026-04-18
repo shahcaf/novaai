@@ -40,6 +40,8 @@ function App() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [customPersona, setCustomPersona] = useState(localStorage.getItem('novacustomPersona') || '');
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -296,7 +298,8 @@ function App() {
         model: selectedModel,
         conversationId: activeId,
         userName: user?.username || 'User',
-        aiSpeed: aiSpeed
+        aiSpeed: aiSpeed,
+        customPersona: customPersona
       }, {
         headers: { 'x-auth-token': localStorage.getItem('token') },
         signal: abortControllerRef.current.signal
@@ -411,12 +414,14 @@ function App() {
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
-  const grouped = conversations.reduce((acc, c) => {
-    const label = formatDate(c.createdAt);
-    if (!acc[label]) acc[label] = [];
-    acc[label].push(c);
-    return acc;
-  }, {});
+  const grouped = conversations
+    .filter(c => c.title.toLowerCase().includes(searchTerm.toLowerCase()))
+    .reduce((acc, c) => {
+      const label = formatDate(c.createdAt);
+      if (!acc[label]) acc[label] = [];
+      acc[label].push(c);
+      return acc;
+    }, {});
 
   const saveProfileChanges = async () => {
     try {
@@ -457,10 +462,21 @@ function App() {
           <span className="sidebar-logo-text">Nova AI</span>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
-          <button className="new-chat-btn" style={{ flex: 1 }} onClick={createNewConversation}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1rem' }}>
+          <button className="new-chat-btn" onClick={createNewConversation}>
             ＋ New Chat
           </button>
+          
+          <div className="sidebar-search-wrapper" style={{ position: 'relative' }}>
+            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input 
+              className="sidebar-search-input"
+              placeholder="Search chats..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 12px 8px 32px', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none' }}
+            />
+          </div>
         </div>
 
         <button className="sidebar-action-btn" onClick={() => setIsSettingsOpen(true)}>
@@ -602,6 +618,19 @@ function App() {
                       <option>Precise (Strict)</option>
                       <option>Creative (Unfiltered)</option>
                     </select>
+                  </div>
+                  <div className="setting-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
+                    <div className="setting-label">Nova Custom Persona (Global)</div>
+                    <textarea 
+                      className="setting-input"
+                      placeholder="e.g. You are a Senior Developer. Be concise and use emojis."
+                      style={{ width: '100%', minHeight: '80px', resize: 'vertical', fontSize: '13px' }}
+                      value={customPersona}
+                      onChange={e => {
+                        setCustomPersona(e.target.value);
+                        localStorage.setItem('novacustomPersona', e.target.value);
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -753,8 +782,10 @@ function App() {
             >
               <div className="message-content">
                 <div className="avatar ai-avatar">N</div>
-                <div className="message-box typing-indicator">
-                  <span></span><span></span><span></span>
+                <div className="message-box typing-container">
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
                 </div>
               </div>
             </motion.div>
