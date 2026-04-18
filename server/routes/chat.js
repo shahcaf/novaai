@@ -33,17 +33,24 @@ router.post('/', auth, async (req, res) => {
     // Prepare multi-modal messages if it's a vision model
     const processedMessages = messages.map(msg => {
       if (isVisionModel && msg.mediaUrl) {
-        const filePath = path.join(__dirname, '..', msg.mediaUrl);
+        const relativePath = msg.mediaUrl.startsWith('/') ? msg.mediaUrl.slice(1) : msg.mediaUrl;
+        const filePath = path.join(__dirname, '..', relativePath);
+        
+        console.log('Resolving Vision File:', filePath);
+        
         if (fs.existsSync(filePath)) {
           const imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
-          const mimeType = path.extname(filePath).slice(1) === 'png' ? 'image/png' : 'image/jpeg';
+          const ext = path.extname(filePath).toLowerCase();
+          const mimeType = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
           return {
             role: msg.role,
             content: [
-              { type: 'text', text: msg.content || "Analyze this image." },
+              { type: 'text', text: msg.content || "Describe this image." },
               { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
             ]
           };
+        } else {
+          console.error('Vision File NotFound:', filePath);
         }
       }
       return { role: msg.role, content: msg.content };
@@ -52,7 +59,7 @@ router.post('/', auth, async (req, res) => {
     const completion = await groq.chat.completions.create({
       model: activeModel,
       messages: [
-        { role: "system", content: "You are Nova AI, a helpful, friendly, and easy-to-understand AI assistant. Use clear, simple language. If analyzing an image, be descriptive and helpful. Avoid overly technical jargon." },
+        { role: "system", content: "You are Nova AI, a helpful and friendly assistant." },
         ...processedMessages
       ],
       temperature: 0.7,
@@ -61,20 +68,24 @@ router.post('/', auth, async (req, res) => {
 
     const aiContent = completion.choices[0].message.content;
     
-    // Save to DB if needed
+    // Save to DB
     const convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
 
-    await Message.create({
-      content: aiContent,
-      isAI: true,
-      senderId: req.user.id,
-      conversationId: convId
-    });
+    try {
+      await Message.create({
+        content: aiContent,
+        isAI: true,
+        senderId: req.user.id,
+        conversationId: convId
+      });
+    } catch (saveErr) {
+      console.error('DB Save error:', saveErr);
+    }
 
     res.json({ content: aiContent });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'AI processing failed' });
+    console.error('Groq AI Error:', err.response?.data || err);
+    res.status(500).json({ error: err.message || 'AI processing failed' });
   }
 });
 
