@@ -323,7 +323,9 @@ router.post('/', auth, async (req, res) => {
             const tag = `[SYSTEM] --- PLATFORM NOTIFICATION: File Successfully Attached (${fileName}) ---`;
             const enrichedText = `${msg.content || ""}\n\n${tag}`.trim();
 
-            if (isVisionModel) {
+            const isLastMessage = messages.indexOf(msg) === messages.length - 1;
+
+            if (isVisionModel && isLastMessage) {
               try {
                 const imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
                 const mimeType = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
@@ -336,10 +338,10 @@ router.post('/', auth, async (req, res) => {
                 };
               } catch (readErr) {
                 console.error('Vision Read error:', readErr);
-                // Fallback to text tag if read fails
                 return { role, content: enrichedText };
               }
             } else {
+              // Historical images: Text context only to save bandwidth/prevent 413 errors
               return { role, content: enrichedText };
             }
           }
