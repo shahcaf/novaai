@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';

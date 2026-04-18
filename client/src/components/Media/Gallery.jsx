@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,19 +12,20 @@ const Gallery = () => {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
 
-  const fetchMedia = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/media/gallery?type=${filter}&search=${search}`);
-      setMedia(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let active = true;
+    const fetchMedia = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/media/gallery?type=${filter}&search=${search}`);
+        if(active) setMedia(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if(active) setLoading(false);
+      }
+    };
     fetchMedia();
+    return () => { active = false; };
   }, [filter, search]);
 
   return (

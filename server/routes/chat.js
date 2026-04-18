@@ -23,13 +23,12 @@ router.get('/history', auth, async (req, res) => {
 // Chat with AI
 router.post('/', auth, async (req, res) => {
   try {
-    const { messages } = req.body;
+    const { messages, model } = req.body;
     
-    // Save user message (optional, usually done via socket for real-time, but App.jsx uses axios)
-    // For now, let's just get the AI response
+    const activeModel = model || "llama-3.3-70b-versatile";
     
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: activeModel,
       messages: [
         { role: "system", content: "You are Nova AI, a helpful, friendly, and easy-to-understand AI assistant. Use clear, simple language and avoid overly technical jargon unless specifically asked. Break down complex topics into simple steps, use bullet points where helpful, and ensure your tone is approachable and supportive." },
         ...messages

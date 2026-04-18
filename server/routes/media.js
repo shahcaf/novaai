@@ -30,8 +30,7 @@ router.post('/upload', auth, upload.single('media'), async (req, res) => {
       senderId: req.user.id,
       content: req.body.content || '',
       mediaUrl,
-      mediaType,
-      conversationId: req.body.conversationId // Added to link message to conversation
+      mediaType
     });
 
     const populatedMessage = await Message.findByPk(newMessage.id, {
@@ -40,6 +39,7 @@ router.post('/upload', auth, upload.single('media'), async (req, res) => {
 
     res.json(populatedMessage);
   } catch (err) {
+    console.error('Media upload error:', err);
     res.status(500).json({ error: err.message });
   }
 });

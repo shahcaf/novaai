@@ -1,9 +1,10 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
-import { Plus, Send, Square, Trash2, Settings, LogOut } from 'lucide-react';
+import { Plus, Send, Square, Trash2, Settings, LogOut, Copy, RefreshCw, Edit2, Check } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -32,6 +33,7 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [copiedIndex, setCopiedIndex] = useState(null);
   
   // Settings State
   const [activeModel, setActiveModel] = useState('Llama 3.3 (70B)');
@@ -149,8 +151,10 @@ function App() {
     setIsLoading(true);
 
     try {
+      const selectedModel = activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : activeModel.includes('Gemma') ? 'gemma2-9b-it' : 'llama3-8b-8192';
       const response = await axios.post(`${API_URL}/api/chat`, {
-        messages: [...activeConv.messages, userMessage].map(m => ({ role: m.role, content: m.content }))
+        messages: [...activeConv.messages, userMessage].map(m => ({ role: m.role, content: m.content || `[User uploaded a ${m.mediaType || 'file'}]` })),
+        model: selectedModel
       }, {
         headers: { 'x-auth-token': localStorage.getItem('token') },
         signal: abortControllerRef.current.signal
@@ -167,7 +171,10 @@ function App() {
         c.id === activeId ? { ...c, messages: [...c.messages, aiMessage] } : c
       ));
     } catch (err) {
-      // ... same error handling ...
+      console.error(err);
+      if (err.name !== 'CanceledError') {
+        alert('AI Generation failed: ' + (err.response?.data?.error || err.message));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -176,6 +183,62 @@ function App() {
   const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopy = (text, index) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const handleEdit = (text, index) => {
+    setInput(text);
+    setConversations(prev => prev.map(c => 
+      c.id === activeId ? { ...c, messages: c.messages.slice(0, index) } : c
+    ));
+    textareaRef.current?.focus();
+  };
+
+  const handleRegenerate = async (index) => {
+    if (isLoading) return;
+    
+    // We want to regenerate the AI message at `index`, which means we delete it and anything after,
+    // and re-send the conversation history up to the user message that prompted it.
+    const newMessages = activeConv.messages.slice(0, index);
+    
+    setConversations(prev => prev.map(c => 
+      c.id === activeId ? { ...c, messages: newMessages } : c
+    ));
+    
+    setIsLoading(true);
+    abortControllerRef.current = new AbortController();
+    
+    try {
+      const selectedModel = activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : activeModel.includes('Gemma') ? 'gemma2-9b-it' : 'llama3-8b-8192';
+      const response = await axios.post(`${API_URL}/api/chat`, {
+        messages: newMessages.map(m => ({ role: m.role, content: m.content || `[User uploaded a ${m.mediaType || 'file'}]` })),
+        model: selectedModel
+      }, {
+        headers: { 'x-auth-token': localStorage.getItem('token') },
+        signal: abortControllerRef.current.signal
+      });
+
+      const aiMessage = { 
+        role: 'assistant', 
+        content: response.data.content, 
+        timestamp: new Date().toISOString(),
+        isNew: true 
+      };
+
+      setConversations(prev => prev.map(c => 
+        c.id === activeId ? { ...c, messages: [...newMessages, aiMessage] } : c
+      ));
+    } catch (err) {
+      console.error(err);
+      alert('AI Generation failed: ' + (err.response?.data?.error || err.message));
+    } finally {
       setIsLoading(false);
     }
   };
@@ -194,23 +257,25 @@ function App() {
       const token = localStorage.getItem('token');
       const res = await axios.post(`${API_URL}/api/media/upload`, formData, {
         headers: { 
-          'Content-Type': 'multipart/form-data',
           'x-auth-token': token 
         }
       });
 
       const userMessage = {
         role: 'user',
-        content: res.data.content || res.data.text || '', // Fallback support
+        content: input || '', // Take whatever is in input, no fallback to upload string as AI handles it
         mediaUrl: res.data.mediaUrl,
         mediaType: res.data.mediaType,
       };
 
+      const newMessages = [...activeConv.messages, userMessage];
+
       setConversations(prev => prev.map(c => 
-        c.id === activeId ? { ...c, messages: [...c.messages, userMessage] } : c
+        c.id === activeId ? { ...c, messages: newMessages } : c
       ));
       
       setInput('');
+      if (e.target) e.target.value = '';
       
       // If it's a new chat, update title
       if (activeConv.title === 'New Chat') {
@@ -220,9 +285,34 @@ function App() {
         ));
       }
 
+      // Ping AI with the new upload
+      abortControllerRef.current = new AbortController();
+      try {
+        const selectedModel = activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : activeModel.includes('Gemma') ? 'gemma2-9b-it' : 'llama3-8b-8192';
+        const aiRes = await axios.post(`${API_URL}/api/chat`, {
+          messages: newMessages.map(m => ({ role: m.role, content: m.content || `[User uploaded a ${m.mediaType || 'file'}]` })),
+          model: selectedModel
+        }, {
+          headers: { 'x-auth-token': token },
+          signal: abortControllerRef.current.signal
+        });
+
+        const aiMessage = { 
+          role: 'assistant', 
+          content: aiRes.data.content, 
+          timestamp: new Date().toISOString()
+        };
+
+        setConversations(prev => prev.map(c => 
+          c.id === activeId ? { ...c, messages: [...newMessages, aiMessage] } : c
+        ));
+      } catch (aiErr) {
+        console.error('AI processing failed after upload', aiErr);
+      }
+
     } catch (err) {
-      console.error('Upload failed', err);
-      alert('Failed to upload file. Please try again.');
+      console.error('Upload failed', err.response?.data || err);
+      alert(`Upload failed: ${err.response?.data?.error || err.response?.data?.msg || err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -388,6 +478,7 @@ function App() {
                   <div className="setting-item">
                     <div className="setting-label">Preferred Model</div>
                     <select value={activeModel} onChange={e => setActiveModel(e.target.value)} className="setting-select">
+                      <option>Llama 3 (8B) - Lightning Fast</option>
                       <option>Llama 3.3 (70B)</option>
                       <option>Mixtral 8x7B</option>
                       <option>Gemma 2 (9B)</option>
@@ -449,35 +540,65 @@ function App() {
               </div>
             </div>
           ) : (
-            activeConv.messages.map((msg, i) => (
-              <div key={i} className={`message-wrapper ${msg.role === 'user' ? 'user' : 'ai'}`}>
-                <div className="message-content">
-                  <div className={`avatar ${msg.role === 'user' ? 'user-avatar' : 'ai-avatar'}`}>
-                    {msg.role === 'user' ? (user?.username?.[0] || 'U') : 'N'}
-                  </div>
-                  <div className="message-box">
-                    {msg.mediaUrl && (
-                      <div className="chat-media-preview" style={{ marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                        {msg.mediaType === 'image' ? (
-                          <img src={`${API_URL}${msg.mediaUrl}`} alt="media" style={{ maxWidth: '100%', maxHeight: '400px', display: 'block' }} />
+            <AnimatePresence initial={false}>
+              {activeConv.messages.map((msg, i) => (
+                <motion.div 
+                  key={i} 
+                  className={`message-wrapper ${msg.role === 'user' ? 'user' : 'ai'}`}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  layout
+                >
+                  <div className="message-content">
+                    <div className={`avatar ${msg.role === 'user' ? 'user-avatar' : 'ai-avatar'}`}>
+                      {msg.role === 'user' ? (user?.username?.[0]?.toUpperCase() || 'U') : 'N'}
+                    </div>
+                    <div className="message-box">
+                      {msg.mediaUrl && (
+                        <div className="chat-media-preview" style={{ marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                          {msg.mediaType === 'image' ? (
+                            <img src={`${API_URL}${msg.mediaUrl}`} alt="media" style={{ maxWidth: '100%', maxHeight: '400px', display: 'block' }} />
+                          ) : (
+                            <video controls src={`${API_URL}${msg.mediaUrl}`} style={{ maxWidth: '100%', maxHeight: '400px', display: 'block' }} />
+                          )}
+                        </div>
+                      )}
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <div className="msg-actions">
+                        {msg.role === 'user' ? (
+                          <button className="msg-action-btn" onClick={() => handleEdit(msg.content, i)} title="Edit Message">
+                            <Edit2 size={14} /> Edit
+                          </button>
                         ) : (
-                          <video controls src={`${API_URL}${msg.mediaUrl}`} style={{ maxWidth: '100%', maxHeight: '400px', display: 'block' }} />
+                          <>
+                            <button className="msg-action-btn" onClick={() => handleCopy(msg.content, i)} title="Copy">
+                              {copiedIndex === i ? <Check size={14} color="#10b981" /> : <Copy size={14} />} {copiedIndex === i ? 'Copied' : 'Copy'}
+                            </button>
+                            <button className="msg-action-btn" onClick={() => handleRegenerate(i)} title="Regenerate" disabled={isLoading}>
+                              <RefreshCw size={14} className={isLoading ? 'spinning' : ''} /> Remake
+                            </button>
+                          </>
                         )}
                       </div>
-                    )}
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))
+                </motion.div>
+              ))}
+            </AnimatePresence>
           )}
           {isLoading && (
-            <div className="message-wrapper ai">
+            <motion.div 
+              className="message-wrapper ai"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
               <div className="message-content">
                 <div className="avatar ai-avatar">N</div>
-                <div className="message-box">Thinking...</div>
+                <div className="message-box typing-indicator">
+                  <span></span><span></span><span></span>
+                </div>
               </div>
-            </div>
+            </motion.div>
           )}
           <div ref={messagesEndRef} />
         </section>
@@ -503,10 +624,16 @@ function App() {
               className="chat-input"
               rows={1}
               style={{ paddingLeft: '48px' }}
-              placeholder="Message Nova AI..."
+              placeholder="Message Nova AI... (or paste a file)"
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
+              onPaste={e => {
+                if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+                  e.preventDefault();
+                  handleFileUpload({ target: { files: [e.clipboardData.files[0]] } });
+                }
+              }}
             />
             <button 
               className={`send-btn ${isLoading ? 'stop-btn' : ''}`} 
