@@ -24,7 +24,9 @@ router.post('/upload', auth, upload.single('media'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     const mediaUrl = `/uploads/${req.file.filename}`;
-    const mediaType = req.file.mimetype.startsWith('video') ? 'video' : 'image';
+    let mediaType = 'file';
+    if (req.file.mimetype.startsWith('image')) mediaType = 'image';
+    else if (req.file.mimetype.startsWith('video')) mediaType = 'video';
 
     const convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
 

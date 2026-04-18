@@ -571,11 +571,18 @@ function App() {
                     </div>
                     <div className="message-box">
                       {msg.mediaUrl && (
-                        <div className="chat-media-preview" style={{ marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                        <div className="chat-media-preview" style={{ marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}>
                           {msg.mediaType === 'image' ? (
-                            <img src={`${API_URL}${msg.mediaUrl}`} alt="media" style={{ maxWidth: '100%', maxHeight: '400px', display: 'block' }} />
+                            <img src={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `${API_URL}${msg.mediaUrl}`} alt="media" style={{ maxWidth: '100%', maxHeight: '400px', display: 'block' }} />
+                          ) : msg.mediaType === 'video' ? (
+                            <video controls src={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `${API_URL}${msg.mediaUrl}`} style={{ maxWidth: '100%', maxHeight: '400px', display: 'block' }} />
                           ) : (
-                            <video controls src={`${API_URL}${msg.mediaUrl}`} style={{ maxWidth: '100%', maxHeight: '400px', display: 'block' }} />
+                            <div style={{ padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <span>📄</span>
+                              <a href={msg.mediaUrl.startsWith('http') ? msg.mediaUrl : `${API_URL}${msg.mediaUrl}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                                Download Attachment
+                              </a>
+                            </div>
                           )}
                         </div>
                       )}
