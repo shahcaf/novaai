@@ -364,6 +364,9 @@ function App() {
                       <option>Light</option>
                       <option>Cyberpunk</option>
                       <option>Midnight</option>
+                      <option>Emerald</option>
+                      <option>Sunset</option>
+                      <option>Amethyst</option>
                     </select>
                   </div>
                   <div className="setting-item">

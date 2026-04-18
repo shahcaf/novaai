@@ -640,17 +640,20 @@ body {
 
 /* ─── Themes ──────────────────────────────────── */
 [data-theme="light"] {
-  --bg-main: #f9f9f9;
-  --bg-sidebar: #ffffff;
-  --surface: #f0f0f0;
-  --surface-hover: #e5e5e5;
-  --border: rgba(0, 0, 0, 0.1);
-  --text-main: #1a1a1a;
-  --text-secondary: #4a4a4a;
-  --text-muted: #7a7a7a;
+  --bg-main: #ffffff;
+  --bg-sidebar: #f8f9fa;
+  --surface: #ffffff;
+  --surface-hover: #f1f3f5;
+  --border: rgba(0, 0, 0, 0.08);
+  --text-main: #111111;
+  --text-secondary: #444444;
+  --text-muted: #888888;
   --accent: #7c6af7;
   --accent-2: #c47cf2;
+  --accent-glow: rgba(124, 106, 247, 0.15);
 }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); }
+[data-theme="light"] .message-wrapper.user { background: rgba(0,0,0,0.02); }
 
 [data-theme="midnight"] {
   --bg-main: #02040a;
@@ -679,6 +682,48 @@ body {
 
 [data-theme="cyberpunk"] .sidebar-logo-icon { background: linear-gradient(135deg, #00ffff, #ff00ff); }
 [data-theme="cyberpunk"] .empty-logo { background: linear-gradient(135deg, #00ffff, #ff00ff); box-shadow: 0 0 40px rgba(0, 255, 255, 0.4); }
+
+[data-theme="emerald"] {
+  --bg-main: #061a14;
+  --bg-sidebar: #04120e;
+  --surface: #0a261d;
+  --surface-hover: #11382b;
+  --border: rgba(16, 185, 129, 0.1);
+  --text-main: #ecfdf5;
+  --text-secondary: #a7f3d0;
+  --text-muted: #34d399;
+  --accent: #10b981;
+  --accent-2: #34d399;
+  --accent-glow: rgba(16, 185, 129, 0.25);
+}
+
+[data-theme="sunset"] {
+  --bg-main: #1a0b06;
+  --bg-sidebar: #120804;
+  --surface: #26110a;
+  --surface-hover: #381a11;
+  --border: rgba(249, 115, 22, 0.1);
+  --text-main: #fff7ed;
+  --text-secondary: #ffedd5;
+  --text-muted: #fb923c;
+  --accent: #f97316;
+  --accent-2: #ec4899;
+  --accent-glow: rgba(249, 115, 22, 0.25);
+}
+
+[data-theme="amethyst"] {
+  --bg-main: #14061a;
+  --bg-sidebar: #0e0412;
+  --surface: #1d0a26;
+  --surface-hover: #2b1138;
+  --border: rgba(168, 85, 247, 0.1);
+  --text-main: #faf5ff;
+  --text-secondary: #f3e8ff;
+  --text-muted: #c084fc;
+  --accent: #a855f7;
+  --accent-2: #8b5cf6;
+  --accent-glow: rgba(168, 85, 247, 0.25);
+}
 
 /* ─── Scrollbar ───────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; }
