@@ -60,7 +60,7 @@ function App() {
   const [copiedIndex, setCopiedIndex] = useState(null);
   
   // Settings State
-  const [activeModel, setActiveModel] = useState('Llama 3.3 (70B)');
+  const [activeModel, setActiveModel] = useState('Llama 3.2 Vision');
   const [fontSize, setFontSize] = useState('Medium');
   const [theme, setTheme] = useState('Dark');
   const [aiSpeed, setAiSpeed] = useState('Fast');
@@ -212,7 +212,12 @@ function App() {
         setFilePreview(null);
       }
 
-      const selectedModel = activeModel.includes('Vision') ? 'llama-3.2-11b-vision-preview' : activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : activeModel.includes('Gemma') ? 'gemma2-9b-it' : 'llama3-8b-8192';
+      const selectedModel = activeModel.includes('Vision') ? 'llama-3.2-11b-vision-preview' : 
+                            activeModel.includes('DeepSeek R1 (70B)') ? 'deepseek-r1-distill-llama-70b' :
+                            activeModel.includes('DeepSeek R1 (Qwen)') ? 'deepseek-r1-distill-qwen-32b' :
+                            activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : 
+                            activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : 
+                            activeModel.includes('Gemma') ? 'gemma2-9b-it' : 'llama3-8b-8192';
       
       const chatMessages = [...activeConv.messages, finalUserMessage].map(m => {
         const msgObj = { role: m.role, content: m.content || (m.mediaType === 'image' ? '[Image]' : `[User uploaded a ${m.mediaType || 'file'}]`) };
@@ -493,11 +498,12 @@ function App() {
                   <div className="setting-item">
                     <div className="setting-label">Preferred Model</div>
                     <select value={activeModel} onChange={e => setActiveModel(e.target.value)} className="setting-select">
-                      <option>Llama 3.2 Vision - Image Capable</option>
+                      <option>Llama 3.2 Vision</option>
+                      <option>DeepSeek R1 (70B) - Reasoning</option>
+                      <option>DeepSeek R1 (Qwen) - Smart</option>
                       <option>Llama 3 (8B) - Lightning Fast</option>
                       <option>Llama 3.3 (70B)</option>
                       <option>Mixtral 8x7B</option>
-                      <option>Gemma 2 (9B)</option>
                     </select>
                   </div>
                   <div className="setting-item">
