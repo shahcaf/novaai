@@ -214,6 +214,8 @@ function App() {
 
       const selectedModel = activeModel.includes('Vision (11B)') ? 'llama-3.2-11b-vision-preview' : 
                             activeModel.includes('Vision (90B)') ? 'llama-3.2-90b-vision-preview' :
+                            activeModel.includes('GPT-4o - Premium') ? 'gpt-4o' :
+                            activeModel.includes('GPT-4o-mini') ? 'gpt-4o-mini' :
                             activeModel.includes('3.3 (70B)') ? 'llama-3.3-70b-versatile' : 
                             activeModel.includes('3.1 (405B)') ? 'llama-3.1-405b-reasoning' :
                             activeModel.includes('3.1 (8B)') ? 'llama-3.1-8b-instant' : 
@@ -500,6 +502,8 @@ function App() {
                     <select value={activeModel} onChange={e => setActiveModel(e.target.value)} className="setting-select">
                       <option>Llama 3.2 Vision (11B)</option>
                       <option>Llama 3.2 Vision (90B) - Pro</option>
+                      <option>GPT-4o - Premium</option>
+                      <option>GPT-4o-mini - Fast</option>
                       <option>Llama 3.3 (70B) - Versatile</option>
                       <option>Llama 3.1 (405B) - Extreme</option>
                       <option>Llama 3.1 (8B) - Instant</option>
