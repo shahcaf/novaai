@@ -29,6 +29,31 @@ const Register = () => {
         
         {error && <div className="error-msg">{error}</div>}
 
+        <div className="social-login-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+          <div className="social-flex-row" style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              type="button" 
+              className="social-mini-btn discord-btn"
+              onClick={() => setError('Discord integration keys needed in .env')}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', background: '#5865F2', border: 'none', borderRadius: '12px', color: 'white', fontWeight: '600', cursor: 'pointer' }}
+            >
+              <img src="https://assets-global.website-files.com/6257ade0c7a694a23318ad7a/6257ade0c7a694383118ad93_Discord-Logo-White.svg" alt="Discord" style={{ width: '20px' }} />
+              Discord
+            </button>
+
+            <button 
+              type="button" 
+              className="social-mini-btn apple-btn"
+              onClick={() => setError('Apple ID integration keys needed in .env')}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', background: 'white', border: 'none', borderRadius: '12px', color: 'black', fontWeight: '600', cursor: 'pointer' }}
+            >
+              <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" alt="Apple" style={{ width: '16px' }} />
+              Apple
+            </button>
+          </div>
+          <div className="divider" style={{ margin: '10px 0' }}><span>or use email</span></div>
+        </div>
+
         <form onSubmit={handleSubmit}>
           <div className="input-group">
             <label>Username</label>

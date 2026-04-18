@@ -1127,3 +1127,21 @@ body {
 .sidebar-search-input::placeholder {
   color: var(--text-muted);
 }
+
+.social-mini-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.social-mini-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+.social-mini-btn:active {
+  transform: translateY(0);
+}
+.discord-btn:hover {
+  background: #4752c4 !important;
+}
+.apple-btn:hover {
+  background: #f0f0f0 !important;
+}
