@@ -124,7 +124,7 @@ router.post('/', auth, async (req, res) => {
     
     const activeModel = model || "llama-3.1-8b-instant";
     const isVisionModel = activeModel.includes('vision') || activeModel.startsWith('gpt-4o') || activeModel.includes('gemini');
-    const isGPT = activeModel.startsWith('gpt-');
+    const isGPT = activeModel.startsWith('gpt-') || activeModel.startsWith('o1') || activeModel.startsWith('o3');
     const isGemini = activeModel.includes('gemini');
 
     // Build the dynamic personality matrix based on user preferences
@@ -214,13 +214,26 @@ router.post('/', auth, async (req, res) => {
 
     try {
       if (isGPT) {
+        // o1/o3 models don't support system roles or temperatures natively
+        const isReasoning = activeModel.startsWith('o1') || activeModel.startsWith('o3');
+        const finalMessages = isReasoning 
+          ? [{ role: "user", content: "System Instruction: " + SYSTEM_PROMPT }, ...processedMessages]
+          : [{ role: "system", content: SYSTEM_PROMPT }, ...processedMessages];
+        
+        const config = {
+          model: activeModel,
+          messages: finalMessages,
+        };
+
+        if (isReasoning) {
+          config.max_completion_tokens = 1024;
+        } else {
+          config.max_tokens = 1024;
+          config.temperature = resolvedTemp;
+        }
+
         try {
-          const completion = await openai.chat.completions.create({
-            model: activeModel,
-            messages: [{ role: "system", content: SYSTEM_PROMPT }, ...processedMessages],
-            max_tokens: 1024,
-            temperature: resolvedTemp
-          });
+          const completion = await openai.chat.completions.create(config);
           aiContent = completion.choices[0].message.content;
         } catch (gptErr) {
           if (gptErr.status === 404 && activeModel === 'gpt-4o') {

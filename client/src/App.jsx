@@ -272,6 +272,10 @@ function App() {
                             activeModel.includes('Vision (90B)') ? 'llama-3.2-90b-vision-preview' :
                             activeModel.includes('GPT-4o - Premium') ? 'gpt-4o' :
                             activeModel.includes('GPT-4o-mini') ? 'gpt-4o-mini' :
+                            activeModel.includes('o1-mini') ? 'o1-mini' :
+                            activeModel.includes('o3-mini') ? 'o3-mini' :
+                            activeModel.includes('DeepSeek R1') ? 'deepseek-r1-distill-llama-70b' :
+                            activeModel.includes('Gemini 2.0 Flash') ? 'gemini-2.0-flash' :
                             activeModel.includes('Gemini 1.5 Pro') ? 'gemini-1.5-pro' :
                             activeModel.includes('Gemini 1.5 Flash') ? 'gemini-1.5-flash' :
                             activeModel.includes('3.3 (70B)') ? 'llama-3.3-70b-versatile' : 
@@ -578,8 +582,12 @@ function App() {
                     <select value={activeModel} onChange={e => setActiveModel(e.target.value)} className="setting-select">
                       <option>Gemini 1.5 Pro</option>
                       <option>Gemini 1.5 Flash</option>
+                      <option>Gemini 2.0 Flash - NextGen</option>
                       <option>GPT-4o - Premium</option>
                       <option>GPT-4o-mini - Fast</option>
+                      <option>o1-mini - Reasoning</option>
+                      <option>o3-mini - Advanced</option>
+                      <option>DeepSeek R1 (70B) - Distill</option>
                       <option>Llama 3.3 (70B) - Versatile</option>
                       <option>Llama 3.2 Vision (11B)</option>
                       <option>Llama 3.2 Vision (90B) - Pro</option>
