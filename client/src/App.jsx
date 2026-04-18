@@ -435,7 +435,8 @@ function App() {
   }
 
   return (
-    <div className="app-container" data-theme={theme.toLowerCase()} {...getRootProps()}>
+    <div {...getRootProps()} style={{ width: '100%', height: '100%', display: 'flex' }}>
+      <input {...getInputProps()} />
       {isDragActive && (
         <div className="drag-overlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(16, 185, 129, 0.2)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
           <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '1rem', border: '2px dashed var(--accent)', color: 'var(--accent)', fontSize: '1.2rem', fontWeight: 'bold' }}>
@@ -443,8 +444,8 @@ function App() {
           </div>
         </div>
       )}
-      <input {...getInputProps()} />
-      <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+      <div className="app-container" data-theme={theme.toLowerCase()} style={{ flex: 1 }}>
+        <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">N</div>
           <span className="sidebar-logo-text">Nova AI</span>
@@ -805,6 +806,7 @@ function App() {
           <p className="input-footer">Nova AI Powered by <strong>{activeModel}</strong> · Verify accuracy.</p>
         </footer>
       </main>
+      </div>
     </div>
   );
 }
