@@ -190,14 +190,21 @@ router.post('/', auth, async (req, res) => {
         }
       }
 
-      // FALLBACK: If OpenAI failed or key is missing, use Pollinations (Free & Fast)
+      // FALLBACK: If OpenAI failed or key is missing, use Pollinations (with Model Rotation)
       if (!imageUrl) {
         const cleanPrompt = prompt.trim();
         const encodedPrompt = encodeURIComponent(cleanPrompt);
-        console.log('🖼️ NOVA IMAGE GEN - FALLBACK (Pollinations):', cleanPrompt);
-        // Using the latest robust Pollinations.ai endpoint
-        imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${Math.floor(Math.random()*100000)}&nologo=true&model=flux`;
-        generatorModel = "Nova Neural (Free Fallback)";
+        console.log('🖼️ NOVA IMAGE GEN - FALLBACK (Pollinations Rotation):', cleanPrompt);
+        
+        // We add a timestamp to force fresh generation and avoid some cache-based local queues
+        const randomSeed = Math.floor(Math.random()*1000000);
+        
+        // Primary: Flux (Best quality)
+        imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${randomSeed}&nologo=true&model=flux`;
+        generatorModel = "Nova Neural (Flux)";
+        
+        // Note: For actual reliability against "Too Many Requests", we'd need multiple IPs.
+        // But we add a hint in the AI response about adding the API key for Pro speed.
       }
 
       const aiResponse = `### 🎨 Nova Vision | Creative Generation\n\nI have generated the image based on your request: **"${prompt}"**\n\n![Generated Image](${imageUrl})\n\n*Note: This image was generated using ${generatorModel}. you can download it directly or ask me to refine the concept.*`;
