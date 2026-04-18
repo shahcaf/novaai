@@ -154,14 +154,17 @@ router.post('/', auth, async (req, res) => {
       lastUserMessage.toLowerCase().includes('create an image') ||
       lastUserMessage.toLowerCase().includes('draw me a') ||
       lastUserMessage.toLowerCase().includes('make me a') ||
+      lastUserMessage.toLowerCase().includes('design me a') ||
+      lastUserMessage.toLowerCase().includes('build me a') ||
+      lastUserMessage.toLowerCase().includes('draft a') ||
       lastUserMessage.toLowerCase().includes('paint a') ||
       lastUserMessage.toLowerCase().includes('picture of a') ||
       lastUserMessage.toLowerCase().includes('show me a')
     );
 
     if (isImageRequest) {
-      let prompt = lastUserMessage.replace(/^\/imagine |^generate an image of |^create an image of |^draw me a |^make me a |^paint a |^picture of a |^show me a |^\/gen /i, '');
-      prompt = prompt.replace(/^generate an image |^create an image |^draw me |^make me |^paint |^picture of /i, '');
+      let prompt = lastUserMessage.replace(/^\/imagine |^generate an image of |^create an image of |^draw me a |^make me a |^design me a |^build me a |^draft a |^paint a |^picture of a |^show me a |^\/gen /i, '');
+      prompt = prompt.replace(/^generate an image |^create an image |^draw me |^make me |^design me |^build me |^draft |^paint |^picture of /i, '');
       
       const cleanPrompt = prompt.trim();
       const encodedPrompt = encodeURIComponent(cleanPrompt);
@@ -221,16 +224,24 @@ router.post('/', auth, async (req, res) => {
           const ext = path.extname(filePath).toLowerCase();
           
           // Case 1: Vision (Images)
-          if (isVisionModel && (ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp' || ext === '.gif')) {
-            const imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
-            const mimeType = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
-            return {
-              role: msg.role,
-              content: [
-                { type: 'text', text: msg.content || "Describe this image." },
-                { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
-              ]
-            };
+          if (ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp' || ext === '.gif') {
+            if (isVisionModel) {
+              const imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
+              const mimeType = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+              return {
+                role: msg.role,
+                content: [
+                  { type: 'text', text: msg.content || "Describe this image." },
+                  { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
+                ]
+              };
+            } else {
+              // Fallback for non-vision models: Acknowledgement
+              return {
+                role: msg.role,
+                content: `${msg.content || ""}\n\n[USER ATTACHMENT: ${path.basename(filePath)}]\n(Note to AI: The user has attached an image file. While you are in a text-only mode, acknowledge that you have received the file and ask the user to describe it if you need specific details.)`
+              };
+            }
           }
           
           // Case 2: Document Parsing (PDF)
