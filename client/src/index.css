@@ -1358,3 +1358,80 @@ body::after {
     bottom: 20px;
   }
 }
+
+/* ─── Slash Command Menu ────────────────────────── */
+.slash-menu-panel {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  width: 100%;
+  max-width: 320px;
+  background: rgba(23, 23, 23, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.slash-menu-header {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.slash-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.slash-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.slash-item-icon {
+  font-size: 1.25rem;
+  width: 32px; height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(124, 106, 247, 0.1);
+  border-radius: 8px;
+}
+
+.slash-item-body {
+  flex: 1;
+}
+
+.slash-item-cmd {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.slash-item-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .slash-menu-panel {
+    max-width: 100%;
+  }
+}

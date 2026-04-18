@@ -44,6 +44,16 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [customPersona, setCustomPersona] = useState(localStorage.getItem('novacustomPersona') || '');
 
+  // Slash Command Menu
+  const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const SLASH_COMMANDS = [
+    { cmd: '/imagine', desc: 'Generate a high-end AI image', icon: '🎨' },
+    { cmd: '/clear', desc: 'Purge this conversation history', icon: '🗑️' },
+    { cmd: '/new', desc: 'Start a brand new conversation', icon: '✨' },
+    { cmd: '/settings', desc: 'Configure your Nova environment', icon: '⚙️' },
+    { cmd: '/persona', desc: 'Set custom AI instructions', icon: '🧠' },
+  ];
+
   // Premium UI State
   const [modal, setModal] = useState(null); // { title, message, actionText, onConfirm }
   const [toast, setToast] = useState(null); // { message, type: 'error' | 'success' }
@@ -922,14 +932,49 @@ function App() {
               onChange={handleFileUpload}
               accept="image/*,video/*,.pdf,.doc,.docx,.txt"
             />
+            <AnimatePresence>
+              {showSlashMenu && (
+                <motion.div 
+                  className="slash-menu-panel"
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                >
+                  <div className="slash-menu-header">Command Palette</div>
+                  {SLASH_COMMANDS.filter(c => c.cmd.includes(input.toLowerCase())).map((c, i) => (
+                    <button 
+                      key={i} 
+                      className="slash-menu-item"
+                      onClick={() => {
+                        if (c.cmd === '/clear') deleteConversation(activeId, { stopPropagation: () => {} });
+                        else if (c.cmd === '/new') createNewConversation();
+                        else if (c.cmd === '/settings') setIsSettingsOpen(true);
+                        else setInput(c.cmd + ' ');
+                        setShowSlashMenu(false);
+                      }}
+                    >
+                      <span className="slash-item-icon">{c.icon}</span>
+                      <div className="slash-item-body">
+                        <div className="slash-item-cmd">{c.cmd}</div>
+                        <div className="slash-item-desc">{c.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
             <textarea
               ref={textareaRef}
               className="chat-input"
               rows={1}
               style={{ paddingLeft: '48px' }}
-              placeholder="Message Nova AI... (or paste a file)"
+              placeholder="Message Nova AI... (type / for commands)"
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={e => {
+                const val = e.target.value;
+                setInput(val);
+                setShowSlashMenu(val.startsWith('/') && val.length > 0);
+              }}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
               onPaste={e => {
                 if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
