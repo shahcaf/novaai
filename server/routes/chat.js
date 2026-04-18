@@ -152,32 +152,49 @@ router.post('/', auth, async (req, res) => {
       lastUserMessage.toLowerCase().startsWith('/gen')
     );
 
-    if (isImageRequest && process.env.OPENAI_API_KEY) {
-      try {
-        const prompt = lastUserMessage.replace(/^\/imagine |^generate an image |^create an image |^\/gen /i, '');
-        console.log('🖼️ NOVA IMAGE GEN TRIGGERED:', prompt);
-        
-        const response = await openai.images.generate({
-          model: "dall-e-3",
-          prompt: prompt,
-          n: 1,
-          size: "1024x1024",
-          quality: "hd"
-        });
+    if (isImageRequest) {
+      const prompt = lastUserMessage.replace(/^\/imagine |^generate an image |^create an image |^\/gen /i, '');
+      const encodedPrompt = encodeURIComponent(prompt);
+      const convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
+      
+      let imageUrl = "";
+      let generatorModel = "";
 
-        const imageUrl = response.data[0].url;
-        const aiResponse = `### 🎨 Nova Vision | Creative Generation\n\nI have generated the image based on your request: **"${prompt}"**\n\n![Generated Image](${imageUrl})\n\n*Note: This image was generated using DALL-E 3. You can download it directly or ask me to refine the concept.*`;
-        
-        // Save to DB (Simplified for this branch)
-        const convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
-        await Message.create({ content: lastUserMessage, isAI: false, senderId: req.user.id, conversationId: convId });
-        await Message.create({ content: aiResponse, isAI: true, senderId: req.user.id, conversationId: convId, metadata: JSON.stringify({ model: 'DALL-E 3' }) });
-
-        return res.json({ content: aiResponse, model: 'DALL-E 3 (Nova Vision)' });
-      } catch (imgErr) {
-        console.error('Image Gen Error:', imgErr);
-        // Fallback to text if image gen fails
+      if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'dummy') {
+        try {
+          console.log('🖼️ NOVA IMAGE GEN - OPENAI DALL-E 3:', prompt);
+          const response = await openai.images.generate({
+            model: "dall-e-3",
+            prompt: prompt,
+            n: 1,
+            size: "1024x1024",
+            quality: "hd"
+          });
+          imageUrl = response.data[0].url;
+          generatorModel = "DALL-E 3";
+        } catch (imgErr) {
+          console.error('OpenAI Image Gen Error, falling back:', imgErr.message);
+        }
       }
+
+      // FALLBACK: If OpenAI failed or key is missing, use Pollinations (Free & Fast)
+      if (!imageUrl) {
+        console.log('🖼️ NOVA IMAGE GEN - FALLBACK (Pollinations):', prompt);
+        // Using Pollinations.ai for a high-quality free fallback
+        imageUrl = `https://pollinations.ai/p/${encodedPrompt}?width=1024&height=1024&seed=${Math.floor(Math.random()*100000)}&nologo=true&model=flux`;
+        generatorModel = "Nova Neural (Free Fallback)";
+      }
+
+      const aiResponse = `### 🎨 Nova Vision | Creative Generation\n\nI have generated the image based on your request: **"${prompt}"**\n\n![Generated Image](${imageUrl})\n\n*Note: This image was generated using ${generatorModel}. you can download it directly or ask me to refine the concept.*`;
+      
+      try {
+        await Message.create({ content: lastUserMessage, isAI: false, senderId: req.user.id, conversationId: convId });
+        await Message.create({ content: aiResponse, isAI: true, senderId: req.user.id, conversationId: convId, metadata: JSON.stringify({ model: generatorModel }) });
+      } catch (saveErr) {
+        console.error('Sync Error on image gen save:', saveErr);
+      }
+
+      return res.json({ content: aiResponse, model: `Nova Vision (${generatorModel})` });
     }
 
     const SYSTEM_PROMPT = basePrompt;
