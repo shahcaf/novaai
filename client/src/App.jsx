@@ -339,13 +339,29 @@ function App() {
       const currentMessages = activeConv?.messages || [];
       const chatMessages = [...currentMessages, finalUserMessage].map(m => {
         const role = m.role || (m.isAI ? 'assistant' : 'user');
-        const msgObj = { 
+        
+        // CRITICAL: Force content to always be a plain string
+        // Server handles file processing via mediaUrl — never send arrays or non-strings
+        let content = '';
+        if (typeof m.content === 'string') {
+          content = m.content;
+        } else if (Array.isArray(m.content)) {
+          content = m.content.find(c => c.type === 'text')?.text || '';
+        } else {
+          content = m.mediaType === 'image' ? '[Image]' : `[User uploaded a ${m.mediaType || 'file'}]`;
+        }
+        
+        // Don't send base64 data URLs as content — that's not a message
+        if (content.startsWith('data:')) {
+          content = '[Image]';
+        }
+        
+        return { 
           role, 
-          content: m.content || (m.mediaType === 'image' ? '[Image]' : `[User uploaded a ${m.mediaType || 'file'}]`),
-          mediaUrl: m.mediaUrl || null,
+          content: content || '[Message]',
+          mediaUrl: m.mediaUrl && !m.mediaUrl.startsWith('data:') ? m.mediaUrl : null,
           mediaType: m.mediaType || null
         };
-        return msgObj;
       });
 
       const response = await axios.post(`${API_URL}/api/chat`, {
