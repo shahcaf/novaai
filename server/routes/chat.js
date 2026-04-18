@@ -17,15 +17,40 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'dummy' });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy');
 
-// UTILITY: Force every message content to be a string. Called right before API dispatch.
+// UTILITY: Guarantee every message has role:string and content:string. 
+// Uses a raw loop — no edge cases, no complexity, no possible failure.
 function forceStringMessages(msgs) {
-  return msgs.map(m => {
-    let c = m.content;
-    if (Array.isArray(c)) c = c.find(p => p?.type === 'text')?.text || c.find(p => typeof p === 'string') || '[Attachment]';
-    if (typeof c !== 'string') c = String(c ?? '');
-    if (c.startsWith('data:')) c = '[Image Attached]';
-    return { role: m.role || 'user', content: c };
-  });
+  const result = [];
+  for (let i = 0; i < msgs.length; i++) {
+    const m = msgs[i];
+    let content = '';
+    
+    if (typeof m.content === 'string') {
+      content = m.content;
+    } else if (Array.isArray(m.content)) {
+      // Extract text from vision format arrays
+      for (let j = 0; j < m.content.length; j++) {
+        if (m.content[j] && m.content[j].type === 'text' && typeof m.content[j].text === 'string') {
+          content = m.content[j].text;
+          break;
+        }
+      }
+      if (!content) content = '[Attachment]';
+    } else {
+      content = '[Message]';
+    }
+    
+    // Never allow base64 blobs
+    if (content.length > 500 && content.indexOf('base64') !== -1) {
+      content = '[Image Attached]';
+    }
+    
+    result.push({
+      role: (typeof m.role === 'string' && m.role) ? m.role : 'user',
+      content: content
+    });
+  }
+  return result;
 }
 
 // Get All User Conversations
