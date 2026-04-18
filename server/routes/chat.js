@@ -156,19 +156,34 @@ router.post('/', auth, async (req, res) => {
   try {
     let { messages, model, userName, aiSpeed, customPersona } = req.body;
     
-    // HARDENED INPUT SANITIZATION: Ensure all message content is a string at entry point.
-    // This prevents 400 "content must be a string" errors caused by vision-format arrays
-    // leaking from client-side state into non-vision API calls.
+    // HARDENED INPUT SANITIZATION: Ensure all message content is a string at entry point
+    // AND inject file awareness tags so they survive through all downstream processing.
     messages = (messages || []).map(m => {
-      if (Array.isArray(m.content)) {
-        const text = m.content.find(c => c.type === 'text')?.text || '';
-        return { ...m, content: text };
+      let content = m.content;
+      
+      // Flatten arrays to strings
+      if (Array.isArray(content)) {
+        content = content.find(c => c.type === 'text')?.text || '';
       }
-      if (!m.role) {
-        return { ...m, role: m.isAI ? 'assistant' : 'user' };
+      // Force string
+      if (typeof content !== 'string') {
+        content = String(content || '');
       }
-      return m;
-    }).filter(m => m.role && (m.content || m.mediaUrl)); // strip empty/invalid messages
+      
+      // If this message has a media attachment, inject context into content
+      // so the AI knows about it even after forceStringMessages strips extra fields
+      if (m.mediaUrl && typeof m.mediaUrl === 'string' && m.mediaUrl.length > 1) {
+        const fileName = m.mediaUrl.split('/').pop() || 'file';
+        if (!content.includes('[USER ATTACHMENT') && !content.includes('[DOCUMENT ATTACHMENT') && !content.includes('[FILE ATTACHMENT')) {
+          const attachType = (m.mediaType === 'image') ? 'image' : (m.mediaType || 'file');
+          content = `${content}\n\n[USER ATTACHMENT: ${fileName} (${attachType})]`.trim();
+        }
+      }
+      
+      const role = m.role || (m.isAI ? 'assistant' : 'user');
+      if (!role) return null;
+      return { ...m, role, content };
+    }).filter(m => m && m.role && (m.content || m.mediaUrl)); // strip empty/invalid messages
 
     const activeModel = model || "llama-3.1-8b-instant";
     const isVisionModel = activeModel.includes('vision') || activeModel.startsWith('gpt-4o') || activeModel.includes('gemini');
