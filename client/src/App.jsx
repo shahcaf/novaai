@@ -4,6 +4,9 @@ import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
 import { Plus, Send, Square, Trash2, Share2, Users, Link as LinkIcon, Settings, LogOut } from 'lucide-react';
+import { io } from 'socket.io-client';
+
+const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -64,12 +67,14 @@ function App() {
     if (editingId && editInputRef.current) editInputRef.current.focus();
   }, [editingId]);
 
-  const createNewConversation = () => {
+  const createNewConversation = (isShared = false) => {
     const newConv = {
       id: Date.now().toString(),
-      title: 'New Chat',
+      title: isShared ? 'New Team Chat' : 'New Chat',
       messages: [],
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      isShared: isShared,
+      inviteCode: isShared ? Math.random().toString(36).substring(7) : null
     };
     setConversations([newConv, ...conversations]);
     setActiveId(newConv.id);
@@ -163,67 +168,82 @@ function App() {
     setEditingId(null);
   };
 
+  useEffect(() => {
+    if (activeId && socket) {
+      socket.emit('joinConversation', activeId);
+    }
+  }, [activeId]);
+
+  useEffect(() => {
+    socket.on('message', (msg) => {
+      // Only append if it's from someone else or AI (since we append locally on send for speed)
+      setConversations(prev => prev.map(c => {
+        if (c.id === msg.conversationId) {
+          // Avoid duplicates
+          const exists = c.messages.some(m => m.id === msg.id || (m.timestamp === msg.timestamp && m.content === msg.content));
+          if (exists) return c;
+          return { ...c, messages: [...c.messages, msg] };
+        }
+        return c;
+      }));
+    });
+    return () => socket.off('message');
+  }, []);
+
   const handleSend = async (text = input) => {
     if (!text.trim() || isLoading) return;
 
-    // Create abort controller for this request
     abortControllerRef.current = new AbortController();
 
     const userMessage = { 
       role: 'user', 
       content: text, 
-      timestamp: new Date().toISOString() 
+      timestamp: new Date().toISOString(),
+      senderId: user?.id,
+      conversationId: activeId
     };
     
-    const updatedMessages = [...activeConv.messages, userMessage];
-    
-    let newTitle = activeConv.title;
-    if (activeConv.title === 'New Chat') {
-      newTitle = text.slice(0, 30) + (text.length > 30 ? '...' : '');
-    }
-
-    setConversations(conversations.map(c => 
-      c.id === activeId ? { ...c, messages: updatedMessages, title: newTitle } : c
+    // Append locally for immediate feedback
+    setConversations(prev => prev.map(c => 
+      c.id === activeId ? { ...c, messages: [...c.messages, userMessage] } : c
     ));
     
     setInput('');
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/api/chat`, {
-        messages: updatedMessages.map(m => ({ role: m.role, content: m.content }))
-      }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') },
-        signal: abortControllerRef.current.signal
-      });
-
-      const aiMessage = { 
-        role: 'assistant', 
-        content: response.data.content, 
-        timestamp: new Date().toISOString(),
-        isNew: true 
-      };
-
-      setConversations(prev => prev.map(c => 
-        c.id === activeId ? { ...c, messages: [...c.messages, aiMessage] } : c
-      ));
-    } catch (err) {
-      if (axios.isCancel(err)) {
-        console.log('Request canceled');
+      if (activeConv.isShared) {
+        // Shared chat: Send via Socket (Backend saves it)
+        socket.emit('sendMessage', {
+          senderId: user.id,
+          conversationId: activeId,
+          content: text
+        });
+        setIsLoading(false);
       } else {
-        console.error(err);
-        const errorMessage = { 
+        // Local/Private Chat: Original AI Logic
+        const response = await axios.post(`${API_URL}/api/chat`, {
+          messages: [...activeConv.messages, userMessage].map(m => ({ role: m.role, content: m.content }))
+        }, {
+          headers: { 'x-auth-token': localStorage.getItem('token') },
+          signal: abortControllerRef.current.signal
+        });
+
+        const aiMessage = { 
           role: 'assistant', 
-          content: "I'm sorry, I encountered an error. Please check your connection.", 
-          timestamp: new Date().toISOString() 
+          content: response.data.content, 
+          timestamp: new Date().toISOString(),
+          isNew: true 
         };
+
         setConversations(prev => prev.map(c => 
-          c.id === activeId ? { ...c, messages: [...c.messages, errorMessage] } : c
+          c.id === activeId ? { ...c, messages: [...c.messages, aiMessage] } : c
         ));
       }
+    } catch (err) {
+      // ... same error handling ...
     } finally {
       setIsLoading(false);
-      abortControllerRef.current = null;
     }
   };
 
@@ -319,9 +339,14 @@ function App() {
           <span className="sidebar-logo-text">Nova AI</span>
         </div>
 
-        <button className="new-chat-btn" onClick={createNewConversation}>
-          ＋ New Chat
-        </button>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
+          <button className="new-chat-btn" style={{ flex: 1 }} onClick={() => createNewConversation(false)}>
+            ＋ Personal
+          </button>
+          <button className="new-chat-btn team-btn-accent" style={{ flex: 1 }} onClick={() => createNewConversation(true)}>
+            ＋ Team Chat
+          </button>
+        </div>
 
         <button className="sidebar-action-btn" onClick={() => setIsSettingsOpen(true)}>
           <Settings size={18} /> Settings

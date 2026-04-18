@@ -76,13 +76,19 @@ startServer(PORT);
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
+  socket.on('joinConversation', (conversationId) => {
+    socket.join(conversationId);
+    console.log(`Socket ${socket.id} joined room: ${conversationId}`);
+  });
+
   socket.on('sendMessage', async (data) => {
     try {
-      const { senderId, text, mediaUrl, mediaType } = data;
+      const { senderId, conversationId, content, mediaUrl, mediaType } = data;
       
       const newMessage = await Message.create({
         senderId,
-        text: text || '',
+        conversationId,
+        content: content || '',
         mediaUrl: mediaUrl || '',
         mediaType: mediaType || 'none'
       });
@@ -92,27 +98,34 @@ io.on('connection', (socket) => {
       });
       
       if (populatedMessage) {
-        io.emit('message', populatedMessage);
+        // Broadcast to the specific conversation room
+        io.to(conversationId).emit('message', populatedMessage);
       }
 
-      // AI Check
-      if (text && (text.toLowerCase().includes('@nova') || text.toLowerCase().includes('nova'))) {
-        const response = await getAIResponse(text);
+      // AI Check (Only if specifically addressed or in private chat)
+      if (content && (content.toLowerCase().includes('@nova') || content.toLowerCase().includes('nova'))) {
+        const response = await getAIResponse(content);
         const aiMessage = await Message.create({
-          senderId, // Simplified for now
-          text: response,
+          conversationId,
+          senderId: null, // AI system ID
+          content: response,
           isAI: true
         });
-        const populatedAI = await Message.findByPk(aiMessage.id, {
-          include: [{ model: User, as: 'sender', attributes: ['username', 'avatar'] }]
-        });
-        if (populatedAI) {
-          io.emit('message', populatedAI);
-        }
+        
+        const populatedAI = {
+          ...aiMessage.toJSON(),
+          sender: { username: 'Nova AI', avatar: null }
+        };
+        
+        io.to(conversationId).emit('message', populatedAI);
       }
     } catch (err) {
       console.error('Socket error:', err);
     }
+  });
+
+  socket.on('leaveConversation', (conversationId) => {
+    socket.leave(conversationId);
   });
 
   socket.on('disconnect', () => console.log('Client disconnected'));
