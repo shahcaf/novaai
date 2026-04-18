@@ -600,6 +600,14 @@ function App() {
             <div className="header-title">Nova AI</div>
           </div>
           <div className="header-actions" style={{ display: 'flex', gap: '12px' }}>
+            <button className="menu-btn" style={{ background: 'var(--accent)', color: 'white', padding: '0 12px', fontSize: '0.8rem', width: 'auto', borderRadius: '6px' }} onClick={() => {
+              const code = activeConv.inviteCode || Math.random().toString(36).substring(7);
+              const url = `${window.location.origin}?invite=${code}`;
+              navigator.clipboard.writeText(url);
+              alert('Team Link Copied!');
+            }}>
+              <LinkIcon size={14} style={{ marginRight: 6 }} /> Copy Team Link
+            </button>
             <button className="menu-btn" onClick={shareConversation} title="Invite Friend to Chat">
               <Share2 size={18} />
             </button>
