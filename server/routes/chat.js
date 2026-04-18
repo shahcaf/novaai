@@ -33,10 +33,6 @@ router.post('/', auth, async (req, res) => {
     const isVisionModel = activeModel.includes('vision') || activeModel.startsWith('gpt-4o');
     const isGPT = activeModel.startsWith('gpt-');
 
-    if (isGPT && (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === '')) {
-      return res.status(400).json({ error: "OpenAI API Key is missing. Please add it to your .env file." });
-    }
-    
     // Prepare multi-modal messages
     const processedMessages = messages.map(msg => {
       if (isVisionModel && msg.mediaUrl) {
