@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const auth = require('../middleware/auth');
 const Message = require('../models/Message');
 const User = require('../models/User');
@@ -26,12 +28,32 @@ router.post('/', auth, async (req, res) => {
     const { messages, model } = req.body;
     
     const activeModel = model || "llama-3.3-70b-versatile";
+    const isVisionModel = activeModel.includes('vision');
     
+    // Prepare multi-modal messages if it's a vision model
+    const processedMessages = messages.map(msg => {
+      if (isVisionModel && msg.mediaUrl) {
+        const filePath = path.join(__dirname, '..', msg.mediaUrl);
+        if (fs.existsSync(filePath)) {
+          const imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
+          const mimeType = path.extname(filePath).slice(1) === 'png' ? 'image/png' : 'image/jpeg';
+          return {
+            role: msg.role,
+            content: [
+              { type: 'text', text: msg.content || "Analyze this image." },
+              { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
+            ]
+          };
+        }
+      }
+      return { role: msg.role, content: msg.content };
+    });
+
     const completion = await groq.chat.completions.create({
       model: activeModel,
       messages: [
-        { role: "system", content: "You are Nova AI, a helpful, friendly, and easy-to-understand AI assistant. Use clear, simple language and avoid overly technical jargon unless specifically asked. Break down complex topics into simple steps, use bullet points where helpful, and ensure your tone is approachable and supportive." },
-        ...messages
+        { role: "system", content: "You are Nova AI, a helpful, friendly, and easy-to-understand AI assistant. Use clear, simple language. If analyzing an image, be descriptive and helpful. Avoid overly technical jargon." },
+        ...processedMessages
       ],
       temperature: 0.7,
       max_tokens: 1024,

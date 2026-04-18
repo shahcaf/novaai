@@ -212,9 +212,18 @@ function App() {
         setFilePreview(null);
       }
 
-      const selectedModel = activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : activeModel.includes('Gemma') ? 'gemma2-9b-it' : 'llama3-8b-8192';
+      const selectedModel = activeModel.includes('Vision') ? 'llama-3.2-11b-vision-preview' : activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : activeModel.includes('Gemma') ? 'gemma2-9b-it' : 'llama3-8b-8192';
+      
+      const chatMessages = [...activeConv.messages, finalUserMessage].map(m => {
+        const msgObj = { role: m.role, content: m.content || (m.mediaType === 'image' ? '[Image]' : `[User uploaded a ${m.mediaType || 'file'}]`) };
+        if (m.mediaUrl && m.mediaType === 'image' && selectedModel.includes('vision')) {
+          msgObj.mediaUrl = m.mediaUrl; // Pass URL to backend for vision processing
+        }
+        return msgObj;
+      });
+
       const response = await axios.post(`${API_URL}/api/chat`, {
-        messages: [...activeConv.messages, finalUserMessage].map(m => ({ role: m.role, content: m.content || `[User uploaded a ${m.mediaType || 'file'}]` })),
+        messages: chatMessages,
         model: selectedModel,
         conversationId: activeId
       }, {
@@ -484,6 +493,7 @@ function App() {
                   <div className="setting-item">
                     <div className="setting-label">Preferred Model</div>
                     <select value={activeModel} onChange={e => setActiveModel(e.target.value)} className="setting-select">
+                      <option>Llama 3.2 Vision - Image Capable</option>
                       <option>Llama 3 (8B) - Lightning Fast</option>
                       <option>Llama 3.3 (70B)</option>
                       <option>Mixtral 8x7B</option>
