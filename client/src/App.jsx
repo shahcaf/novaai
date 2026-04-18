@@ -209,9 +209,7 @@ function App() {
         content: res.data.content || res.data.text || '', // Fallback support
         mediaUrl: res.data.mediaUrl,
         mediaType: res.data.mediaType,
-        timestamp: new Date().toISOString()
       };
-创新
 
       setConversations(prev => prev.map(c => 
         c.id === activeId ? { ...c, messages: [...c.messages, userMessage] } : c
