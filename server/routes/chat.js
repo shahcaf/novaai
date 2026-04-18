@@ -120,12 +120,27 @@ router.get('/history/:conversationId', auth, async (req, res) => {
 // Chat with AI
 router.post('/', auth, async (req, res) => {
   try {
-    const { messages, model } = req.body;
+    const { messages, model, userName, aiSpeed } = req.body;
     
     const activeModel = model || "llama-3.1-8b-instant";
     const isVisionModel = activeModel.includes('vision') || activeModel.startsWith('gpt-4o') || activeModel.includes('gemini');
     const isGPT = activeModel.startsWith('gpt-');
     const isGemini = activeModel.includes('gemini');
+
+    // Build the dynamic personality matrix based on user preferences
+    let basePrompt = `You are Nova AI, a highly advanced, ultra-premium AI assistant created by the Nova Cloud team. You are currently speaking with a user named "${userName || 'User'}". Always be extremely helpful, professional, and display high intelligence.`;
+    
+    if (aiSpeed === 'Precise (Strict)') {
+      basePrompt += " You must be extremely concise, logical, and strictly factual. Avoid conversational filler. Prioritize absolute accuracy and deep reasoning over speed.";
+    } else if (aiSpeed === 'Creative (Unfiltered)') {
+      basePrompt += " You must be highly creative, articulate, and expressive. Feel free to use engaging metaphors, elaborate on complex ideas, and provide outside-the-box hypothetical scenarios. Use an inspiring tone.";
+    } else {
+      basePrompt += " Balance speed with accuracy. Be friendly, easy to understand, and provide clean, well-formatted markdown responses.";
+    }
+    
+    basePrompt += " Use clear typography, bolded keywords, and properly formatted code blocks. Ensure your tone always feels sophisticated.";
+
+    const SYSTEM_PROMPT = basePrompt;
 
     // Prepare multi-modal/contextual messages
     const processedMessages = await Promise.all(messages.map(async (msg) => {
@@ -193,19 +208,23 @@ router.post('/', auth, async (req, res) => {
 
     let aiContent = "";
     let actualModelUsed = activeModel;
+    
+    // Set dynamic temperature
+    const resolvedTemp = aiSpeed === 'Precise (Strict)' ? 0.2 : (aiSpeed === 'Creative (Unfiltered)' ? 0.9 : 0.7);
 
     try {
       if (isGPT) {
         try {
           const completion = await openai.chat.completions.create({
             model: activeModel,
-            messages: [{ role: "system", content: "You are Nova AI." }, ...processedMessages],
+            messages: [{ role: "system", content: SYSTEM_PROMPT }, ...processedMessages],
             max_tokens: 1024,
+            temperature: resolvedTemp
           });
           aiContent = completion.choices[0].message.content;
         } catch (gptErr) {
           if (gptErr.status === 404 && activeModel === 'gpt-4o') {
-            const mini = await openai.chat.completions.create({ model: 'gpt-4o-mini', messages: processedMessages, max_tokens: 1024 });
+            const mini = await openai.chat.completions.create({ model: 'gpt-4o-mini', messages: [{ role: "system", content: SYSTEM_PROMPT }, ...processedMessages], max_tokens: 1024, temperature: resolvedTemp });
             aiContent = mini.choices[0].message.content;
             actualModelUsed = 'GPT-4o-mini';
           } else throw gptErr;
@@ -213,7 +232,7 @@ router.post('/', auth, async (req, res) => {
       } else if (isGemini) {
         const genModel = genAI.getGenerativeModel({ 
           model: activeModel,
-          systemInstruction: "You are Nova AI, a helpful and friendly AI assistant powered by Google Gemini. Use markdown for all responses."
+          systemInstruction: SYSTEM_PROMPT
         });
         
         const contents = processedMessages.map(m => {
@@ -238,13 +257,16 @@ router.post('/', auth, async (req, res) => {
           return { role, parts: [{ text: m.content }] };
         });
 
-        const result = await genModel.generateContent({ contents });
+        const result = await genModel.generateContent({ 
+          contents, 
+          generationConfig: { temperature: resolvedTemp } 
+        });
         aiContent = result.response.text();
       } else {
         const completion = await groq.chat.completions.create({
           model: activeModel,
-          messages: [{ role: "system", content: "You are Nova AI." }, ...processedMessages],
-          temperature: 0.7,
+          messages: [{ role: "system", content: SYSTEM_PROMPT }, ...processedMessages],
+          temperature: resolvedTemp,
           max_tokens: 1024,
         });
         aiContent = completion.choices[0].message.content;
@@ -253,8 +275,8 @@ router.post('/', auth, async (req, res) => {
       console.error('Final AI fallback triggered:', apiErr.message);
       const fallbackCompletion = await groq.chat.completions.create({
         model: "llama-3.1-8b-instant",
-        messages: [{ role: "system", content: "You are Nova AI." }, ...processedMessages],
-        temperature: 0.7,
+        messages: [{ role: "system", content: SYSTEM_PROMPT }, ...processedMessages],
+        temperature: resolvedTemp,
         max_tokens: 1024,
       });
       aiContent = fallbackCompletion.choices[0].message.content;

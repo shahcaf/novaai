@@ -290,7 +290,9 @@ function App() {
       const response = await axios.post(`${API_URL}/api/chat`, {
         messages: chatMessages,
         model: selectedModel,
-        conversationId: activeId
+        conversationId: activeId,
+        userName: user?.username || 'User',
+        aiSpeed: aiSpeed
       }, {
         headers: { 'x-auth-token': localStorage.getItem('token') },
         signal: abortControllerRef.current.signal
