@@ -12,28 +12,45 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 router.post('/google', async (req, res) => {
   try {
     const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ error: 'No Google access token provided' });
+    }
+
     // Fetch user info using the access token
-    const googleRes = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    console.log('Attempting Google UserInfo fetch...');
+    let googleRes;
+    try {
+      googleRes = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (fetchErr) {
+      console.error('Google UserInfo Fetch Error:', fetchErr.response?.data || fetchErr.message);
+      return res.status(401).json({ error: 'Invalid Google token' });
+    }
+
     const { name, email, picture } = googleRes.data;
+    if (!email) {
+      return res.status(400).json({ error: 'Email not provided by Google' });
+    }
 
     let user = await User.findOne({ where: { email } });
     if (!user) {
+      console.log('Creating new user from Google:', email);
       // Create a random password for OAuth users
       const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
       user = await User.create({ 
-        username: name.replace(/\s+/g, '').toLowerCase() + Math.floor(Math.random() * 1000), 
+        username: (name || 'user').replace(/\s+/g, '').toLowerCase() + Math.floor(Math.random() * 1000), 
         email, 
         password: randomPassword,
-        avatar: picture
+        avatar: picture || ''
       });
     }
 
     const jwtToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ token: jwtToken, user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar } });
   } catch (err) {
-    res.status(500).json({ error: 'Google authentication failed', details: err.message });
+    console.error('SERVER AUTH ERROR:', err);
+    res.status(500).json({ error: 'Server authentication failure', details: err.message });
   }
 });
 
