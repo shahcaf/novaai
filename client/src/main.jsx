@@ -8,6 +8,7 @@ import { AuthProvider, AuthContext } from './context/AuthContext'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './components/Auth/Login'
 import Register from './components/Auth/Register'
+import DiscordCallback from './components/Auth/DiscordCallback'
 
 const PremiumLoader = () => (
   <div className="nova-boot-screen">
@@ -45,6 +46,7 @@ createRoot(document.getElementById('root')).render(
           <Routes>
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+            <Route path="/discord-callback" element={<DiscordCallback />} />
             <Route path="/" element={
               <ProtectedRoute>
                 <App />

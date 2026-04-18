@@ -91,7 +91,15 @@ const Login = () => {
             <button 
               type="button" 
               className="social-mini-btn discord-btn"
-              onClick={() => setError('Discord social login is currently being configured for your region.')}
+              onClick={() => {
+                const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID;
+                if (!clientId) {
+                  setError('Discord social login is currently being configured.');
+                  return;
+                }
+                const redirectUri = encodeURIComponent(`${window.location.origin}/discord-callback`);
+                window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=identify%20email`;
+              }}
               style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', background: '#5865F2', border: 'none', borderRadius: '12px', color: 'white', fontWeight: '600', cursor: 'pointer' }}
             >
               <img src="https://assets-global.website-files.com/6257ade0c7a694a23318ad7a/6257ade0c7a694383118ad93_Discord-Logo-White.svg" alt="Discord" style={{ width: '20px' }} />
