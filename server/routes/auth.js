@@ -54,6 +54,39 @@ router.post('/google', async (req, res) => {
   }
 });
 
+// Discord Login
+router.post('/discord', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'No Discord token provided' });
+
+    // Fetch user info from Discord
+    const discordRes = await axios.get('https://discord.com/api/users/@me', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const { id, username, email, avatar } = discordRes.data;
+    if (!email) return res.status(400).json({ error: 'Discord email not verified or provided' });
+
+    let user = await User.findOne({ where: { email } });
+    if (!user) {
+      const randomPassword = await bcrypt.hash(Math.random().toString(36), 10);
+      user = await User.create({
+        username: `${username}${Math.floor(Math.random() * 1000)}`.toLowerCase(),
+        email,
+        password: randomPassword,
+        avatar: avatar ? `https://cdn.discordapp.com/avatars/${id}/${avatar}.png` : ''
+      });
+    }
+
+    const jwtToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token: jwtToken, user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar } });
+  } catch (err) {
+    console.error('Discord Auth Error:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Discord login failed' });
+  }
+});
+
 // Register
 router.post('/register', async (req, res) => {
   try {

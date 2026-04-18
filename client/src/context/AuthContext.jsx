@@ -43,6 +43,13 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const discordLogin = async (token) => {
+    const res = await axios.post(`${API_BASE_URL}/api/auth/discord`, { token });
+    localStorage.setItem('token', res.data.token);
+    setUser(res.data.user);
+    return res.data;
+  };
+
   const register = async (username, email, password) => {
     const res = await axios.post(`${API_BASE_URL}/api/auth/register`, { username, email, password });
     localStorage.setItem('token', res.data.token);
@@ -66,7 +73,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, googleLogin, register, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, loading, login, googleLogin, discordLogin, register, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
