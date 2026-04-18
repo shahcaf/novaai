@@ -471,14 +471,16 @@ function App() {
           <Settings size={18} /> Settings
         </button>
 
-        <button className="sidebar-action-btn" onClick={() => {
-          setTeamName(activeConv.title);
-          setCustomInviteCode(activeConv.inviteCode || '');
-          fetchMembers(activeId);
-          setIsTeamSettingsOpen(true);
-        }} title="Manage Team / Share Link">
-          <Users size={18} /> Team Settings
-        </button>
+        {activeConv?.isShared && (
+          <button className="sidebar-action-btn" onClick={() => {
+            setTeamName(activeConv.title);
+            setCustomInviteCode(activeConv.inviteCode || '');
+            fetchMembers(String(activeConv.id));
+            setIsTeamSettingsOpen(true);
+          }} title="Manage Team / Share Link">
+            <Users size={18} /> Team Settings
+          </button>
+        )}
 
         <div className="sidebar-scroll">
           {Object.entries(grouped).map(([label, convs]) => (
