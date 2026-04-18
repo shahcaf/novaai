@@ -596,7 +596,14 @@ function App() {
                           )}
                         </div>
                       )}
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <div className="message-text">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                      {msg.isAI && (
+                        <div className="message-model-badge" style={{ fontSize: '9px', opacity: 0.4, marginTop: '8px', textAlign: 'right', fontStyle: 'italic' }}>
+                          {msg.metadata ? (JSON.parse(msg.metadata).model) : (msg.sender?.username === 'Nova AI' ? 'Nova Assistant' : '')}
+                        </div>
+                      )}
                       <div className="msg-actions">
                         {msg.role === 'user' ? (
                           <button className="msg-action-btn" onClick={() => handleEdit(msg.content, i)} title="Edit Message">

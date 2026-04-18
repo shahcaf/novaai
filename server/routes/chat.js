@@ -57,6 +57,7 @@ router.post('/', auth, async (req, res) => {
     });
 
     let aiContent = "";
+    let actualModelUsed = activeModel;
 
     try {
       if (isGPT) {
@@ -102,7 +103,6 @@ router.post('/', auth, async (req, res) => {
     } catch (apiErr) {
       console.error('Final AI fallback triggered:', apiErr.message);
       
-      // Ultimate fallback to Groq if OpenAI fails entirely
       const fallbackCompletion = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
         messages: [
@@ -113,6 +113,7 @@ router.post('/', auth, async (req, res) => {
         max_tokens: 1024,
       });
       aiContent = fallbackCompletion.choices[0].message.content;
+      actualModelUsed = "Llama 3.3 (Fallback)";
     }
     
     // Save to DB
@@ -123,13 +124,14 @@ router.post('/', auth, async (req, res) => {
         content: aiContent,
         isAI: true,
         senderId: req.user.id,
-        conversationId: convId
+        conversationId: convId,
+        metadata: JSON.stringify({ model: actualModelUsed })
       });
     } catch (saveErr) {
       console.error('DB Save error:', saveErr);
     }
 
-    res.json({ content: aiContent });
+    res.json({ content: aiContent, model: actualModelUsed });
   } catch (err) {
     console.error('Critical AI Error:', err.response?.data || err);
     res.status(500).json({ error: err.message || 'AI processing failed' });
