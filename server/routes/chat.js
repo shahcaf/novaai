@@ -302,6 +302,21 @@ router.post('/', auth, async (req, res) => {
       
       return { role, content: msg.content || "" };
     }));
+
+    // SAFETY: Normalize all content to strings for non-vision models
+    // Vision array format [{ type: 'text' }, { type: 'image_url' }] causes 400 errors on Groq/Llama
+    const safeMessages = processedMessages.map(m => {
+      if (Array.isArray(m.content)) {
+        if (isVisionModel && (isGPT || isGemini)) {
+          return m; // Pass arrays through for GPT/Gemini vision models
+        }
+        // Flatten to string for all other models
+        const textContent = m.content.find(c => c.type === 'text')?.text || '';
+        const hasImage = m.content.some(c => c.type === 'image_url');
+        return { ...m, content: `${textContent}${hasImage ? '\n\n[Image Attached]' : ''}` };
+      }
+      return m;
+    });
           
 
 
@@ -317,8 +332,8 @@ router.post('/', auth, async (req, res) => {
         // o1/o3 models don't support system roles or temperatures natively
         const isReasoning = activeModel.startsWith('o1') || activeModel.startsWith('o3');
         const finalMessages = isReasoning 
-          ? [{ role: "user", content: "System Instruction: " + SYSTEM_PROMPT }, ...processedMessages]
-          : [{ role: "system", content: SYSTEM_PROMPT }, ...processedMessages];
+          ? [{ role: "user", content: "System Instruction: " + SYSTEM_PROMPT }, ...safeMessages]
+          : [{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages];
         
         const config = {
           model: activeModel,
@@ -337,7 +352,7 @@ router.post('/', auth, async (req, res) => {
           aiContent = completion.choices[0].message.content;
         } catch (gptErr) {
           if (gptErr.status === 404 && activeModel === 'gpt-4o') {
-            const mini = await openai.chat.completions.create({ model: 'gpt-4o-mini', messages: [{ role: "system", content: SYSTEM_PROMPT }, ...processedMessages], max_tokens: 1024, temperature: resolvedTemp });
+            const mini = await openai.chat.completions.create({ model: 'gpt-4o-mini', messages: [{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages], max_tokens: 1024, temperature: resolvedTemp });
             aiContent = mini.choices[0].message.content;
             actualModelUsed = 'GPT-4o-mini';
           } else throw gptErr;
@@ -348,7 +363,7 @@ router.post('/', auth, async (req, res) => {
           systemInstruction: SYSTEM_PROMPT
         });
         
-        const contents = processedMessages.map(m => {
+        const contents = processedMessages.map(m => {  // Gemini handles arrays natively
           const role = m.role === 'assistant' ? 'model' : 'user';
           if (Array.isArray(m.content)) {
             const parts = m.content.map(part => {
@@ -378,7 +393,7 @@ router.post('/', auth, async (req, res) => {
       } else {
         const completion = await groq.chat.completions.create({
           model: activeModel,
-          messages: [{ role: "system", content: SYSTEM_PROMPT }, ...processedMessages],
+          messages: [{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages],
           temperature: resolvedTemp,
           max_tokens: 1024,
         });
@@ -388,7 +403,7 @@ router.post('/', auth, async (req, res) => {
       console.error('Final AI fallback triggered:', apiErr.message);
       const fallbackCompletion = await groq.chat.completions.create({
         model: "llama-3.1-8b-instant",
-        messages: [{ role: "system", content: SYSTEM_PROMPT }, ...processedMessages],
+        messages: [{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages],
         temperature: resolvedTemp,
         max_tokens: 1024,
       });
