@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
-import { Plus, Send, Square, Trash2, Settings, LogOut, Copy, RefreshCw, Edit2, Check } from 'lucide-react';
+import { Plus, Send, Square, Trash2, Settings, LogOut, Copy, RefreshCw, Edit2, Check, X } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -66,6 +66,8 @@ function App() {
   const [aiSpeed, setAiSpeed] = useState('Fast');
   const [editUsername, setEditUsername] = useState(user?.username || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -174,11 +176,47 @@ function App() {
     setInput('');
     setIsLoading(true);
 
+    let finalUserMessage = userMessage;
+
     try {
+      // If there is a selected file, upload it first
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append('media', selectedFile);
+        formData.append('content', text);
+        formData.append('conversationId', activeId);
+
+        const token = localStorage.getItem('token');
+        const uploadRes = await axios.post(`${API_URL}/api/media/upload`, formData, {
+          headers: { 'x-auth-token': token }
+        });
+
+        finalUserMessage = {
+          ...userMessage,
+          content: uploadRes.data.content || text,
+          mediaUrl: uploadRes.data.mediaUrl,
+          mediaType: uploadRes.data.mediaType,
+        };
+
+        // Update the last message in local state to include media
+        setConversations(prev => prev.map(c => 
+          c.id === activeId ? { 
+            ...c, 
+            messages: c.messages.map((m, idx) => 
+              idx === c.messages.length - 1 ? finalUserMessage : m
+            ) 
+          } : c
+        ));
+        
+        setSelectedFile(null);
+        setFilePreview(null);
+      }
+
       const selectedModel = activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : activeModel.includes('Gemma') ? 'gemma2-9b-it' : 'llama3-8b-8192';
       const response = await axios.post(`${API_URL}/api/chat`, {
-        messages: [...activeConv.messages, userMessage].map(m => ({ role: m.role, content: m.content || `[User uploaded a ${m.mediaType || 'file'}]` })),
-        model: selectedModel
+        messages: [...activeConv.messages, finalUserMessage].map(m => ({ role: m.role, content: m.content || `[User uploaded a ${m.mediaType || 'file'}]` })),
+        model: selectedModel,
+        conversationId: activeId
       }, {
         headers: { 'x-auth-token': localStorage.getItem('token') },
         signal: abortControllerRef.current.signal
@@ -267,79 +305,23 @@ function App() {
     }
   };
 
-  const handleFileUpload = async (e) => {
+  const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    const formData = new FormData();
-    formData.append('media', file);
-    formData.append('content', input || `Uploaded ${file.name}`);
-    formData.append('conversationId', activeId);
-
-    try {
-      setIsLoading(true);
-      const token = localStorage.getItem('token');
-      const res = await axios.post(`${API_URL}/api/media/upload`, formData, {
-        headers: { 
-          'x-auth-token': token 
-        }
-      });
-
-      const userMessage = {
-        role: 'user',
-        content: input || '', // Take whatever is in input, no fallback to upload string as AI handles it
-        mediaUrl: res.data.mediaUrl,
-        mediaType: res.data.mediaType,
-      };
-
-      const newMessages = [...activeConv.messages, userMessage];
-
-      setConversations(prev => prev.map(c => 
-        c.id === activeId ? { ...c, messages: newMessages } : c
-      ));
-      
-      setInput('');
-      if (e.target) e.target.value = '';
-      
-      // If it's a new chat, update title
-      if (activeConv.title === 'New Chat') {
-        const newTitle = `Shared ${res.data.mediaType}`;
-        setConversations(prev => prev.map(c => 
-          c.id === activeId ? { ...c, title: newTitle } : c
-        ));
-      }
-
-      // Ping AI with the new upload
-      abortControllerRef.current = new AbortController();
-      try {
-        const selectedModel = activeModel.includes('Llama 3.3') ? 'llama-3.3-70b-versatile' : activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : activeModel.includes('Gemma') ? 'gemma2-9b-it' : 'llama3-8b-8192';
-        const aiRes = await axios.post(`${API_URL}/api/chat`, {
-          messages: newMessages.map(m => ({ role: m.role, content: m.content || `[User uploaded a ${m.mediaType || 'file'}]` })),
-          model: selectedModel
-        }, {
-          headers: { 'x-auth-token': token },
-          signal: abortControllerRef.current.signal
-        });
-
-        const aiMessage = { 
-          role: 'assistant', 
-          content: aiRes.data.content, 
-          timestamp: new Date().toISOString()
-        };
-
-        setConversations(prev => prev.map(c => 
-          c.id === activeId ? { ...c, messages: [...newMessages, aiMessage] } : c
-        ));
-      } catch (aiErr) {
-        console.error('AI processing failed after upload', aiErr);
-      }
-
-    } catch (err) {
-      console.error('Upload failed', err.response?.data || err);
-      alert(`Upload failed: ${err.response?.data?.error || err.response?.data?.msg || err.message}`);
-    } finally {
-      setIsLoading(false);
+    setSelectedFile(file);
+    if (file.type.startsWith('image')) {
+      const reader = new FileReader();
+      reader.onload = (e) => setFilePreview(e.target.result);
+      reader.readAsDataURL(file);
+    } else {
+      setFilePreview('file');
     }
+    if (e.target) e.target.value = '';
+  };
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
+    setFilePreview(null);
   };
 
   const formatDate = (dateStr) => {
@@ -628,6 +610,16 @@ function App() {
         </section>
 
         <footer className="input-area">
+          {filePreview && (
+            <div className="file-staging-preview">
+              {filePreview === 'file' ? (
+                <div className="file-icon-preview">📄 {selectedFile.name}</div>
+              ) : (
+                <img src={filePreview} alt="upload preview" />
+              )}
+              <button className="remove-file-btn" onClick={removeSelectedFile}><X size={14} /></button>
+            </div>
+          )}
           <div className="input-wrapper">
             <button 
               className="upload-plus-btn" 
@@ -662,7 +654,7 @@ function App() {
             <button 
               className={`send-btn ${isLoading ? 'stop-btn' : ''}`} 
               onClick={isLoading ? handleStop : () => handleSend()} 
-              disabled={(!input.trim() && !isLoading)}
+              disabled={(!input.trim() && !isLoading && !selectedFile)}
               title={isLoading ? "Stop generating" : "Send message"}
             >
               {isLoading ? <Square size={16} fill="white" /> : <Send size={18} />}
