@@ -24,7 +24,21 @@ router.get('/conversations', auth, async (req, res) => {
       where: { creatorId: req.user.id },
       order: [['updatedAt', 'DESC']]
     });
-    res.json(conversations);
+
+    // Auto-cleanup: Purge any unused "New Chat" ghosts
+    const validConvs = [];
+    for (const conv of conversations) {
+      if (conv.title === 'New Chat' || conv.title === 'New Team Chat') {
+        const messageCount = await Message.count({ where: { conversationId: conv.id } });
+        if (messageCount === 0) {
+          await conv.destroy();
+          continue;
+        }
+      }
+      validConvs.push(conv);
+    }
+
+    res.json(validConvs);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
