@@ -25,6 +25,8 @@ function App() {
   const [activeId, setActiveId] = useState(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [stagedMedia, setStagedMedia] = useState(null); // { url, type, remoteUrl }
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -259,15 +261,19 @@ function App() {
 
     abortControllerRef.current = new AbortController();
 
+    // Construct immediate message for UI
+    const localMediaUrl = (selectedFile && filePreview !== 'file') ? filePreview : null;
     const userMessage = { 
       role: 'user', 
       content: text, 
       timestamp: new Date().toISOString(),
       senderId: user?.id,
-      conversationId: activeId
+      conversationId: activeId,
+      mediaUrl: localMediaUrl,
+      mediaType: selectedFile?.type?.split('/')[0] || null
     };
     
-    // Append locally for immediate feedback
+    // Append locally for immediate feedback (including image preview)
     setConversations(prev => prev.map(c => 
       c.id === activeId ? { ...c, messages: [...(c.messages || []), userMessage] } : c
     ));
@@ -275,41 +281,45 @@ function App() {
     setInput('');
     setIsLoading(true);
 
-    let finalUserMessage = userMessage;
-
     try {
-      // If there is a selected file, upload it first
-      if (selectedFile) {
+      // WAIT FOR UPLOAD TO FINISH IF NOT DONE YET
+      let finalMedia = stagedMedia;
+      if (selectedFile && !stagedMedia) {
+        // Fallback for extremely fast typing
         const formData = new FormData();
         formData.append('media', selectedFile);
-        formData.append('content', text);
         formData.append('conversationId', activeId);
-
         const token = localStorage.getItem('token');
         const uploadRes = await axios.post(`${API_URL}/api/media/upload`, formData, {
           headers: { 'x-auth-token': token }
         });
-
-        finalUserMessage = {
-          ...userMessage,
-          content: uploadRes.data.content || text,
-          mediaUrl: uploadRes.data.mediaUrl,
-          mediaType: uploadRes.data.mediaType,
+        finalMedia = {
+          url: uploadRes.data.mediaUrl,
+          type: uploadRes.data.mediaType,
+          content: uploadRes.data.content
         };
-
-        // Update the last message in local state to include media
-        setConversations(prev => prev.map(c => 
-          c.id === activeId ? { 
-            ...c, 
-            messages: (c.messages || []).map((m, idx) => 
-              idx === (c.messages?.length || 0) - 1 ? finalUserMessage : m
-            ) 
-          } : c
-        ));
-        
-        setSelectedFile(null);
-        setFilePreview(null);
       }
+
+      let finalUserMessage = {
+        ...userMessage,
+        content: finalMedia?.content || text,
+        mediaUrl: finalMedia?.url || null,
+        mediaType: finalMedia?.type || null
+      };
+
+      // UPDATE LOCAL STATE WITH REAL REMOTE DATA (In background)
+      setConversations(prev => prev.map(c => 
+        c.id === activeId ? { 
+          ...c, 
+          messages: (c.messages || []).map((m, idx) => 
+            idx === (c.messages?.length || 0) - 1 ? finalUserMessage : m
+          ) 
+        } : c
+      ));
+
+      setSelectedFile(null);
+      setFilePreview(null);
+      setStagedMedia(null);
 
       const selectedModel = activeModel.includes('Vision (11B)') ? 'llama-3.2-11b-vision-preview' : 
                             activeModel.includes('Vision (90B)') ? 'llama-3.2-90b-vision-preview' :
@@ -432,10 +442,13 @@ function App() {
     }
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setSelectedFile(file);
+    setIsUploadingMedia(true);
+
+    // Initial local preview for instant feedback
     if (file.type.startsWith('image')) {
       const reader = new FileReader();
       reader.onload = (e) => setFilePreview(e.target.result);
@@ -443,7 +456,27 @@ function App() {
     } else {
       setFilePreview('file');
     }
-    if (e.target) e.target.value = '';
+
+    // START GLOBAL UPLOAD IMMEDIATELY
+    try {
+      const formData = new FormData();
+      formData.append('media', file);
+      formData.append('conversationId', activeId);
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${API_URL}/api/media/upload`, formData, {
+        headers: { 'x-auth-token': token }
+      });
+      setStagedMedia({
+        url: res.data.mediaUrl,
+        type: res.data.mediaType,
+        content: res.data.content
+      });
+    } catch (err) {
+      console.error('Eager Upload Failed:', err);
+      showToast('Media upload failed', 'error');
+    } finally {
+      setIsUploadingMedia(false);
+    }
   };
 
   const removeSelectedFile = () => {
