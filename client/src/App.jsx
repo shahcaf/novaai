@@ -72,12 +72,13 @@ function App() {
 
   const fetchMembers = async (id = activeId) => {
     try {
+      if (!id || id === 'default') return;
       const res = await axios.get(`${API_URL}/api/team/members/${id}`, {
         headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       setTeamMembers(res.data);
     } catch (err) {
-      console.error(err);
+      console.error('Fetch members error:', err);
     }
   };
 
@@ -196,13 +197,13 @@ function App() {
       });
 
       const sharedConvs = res.data.map(c => ({
-        id: c.id,
+        id: String(c.id),
         title: c.title,
         messages: c.Messages || [],
         createdAt: c.createdAt,
         isShared: true,
         inviteCode: c.inviteCode,
-        creatorId: c.creatorId
+        creatorId: String(c.creatorId)
       }));
 
       setConversations(prev => {
@@ -669,14 +670,17 @@ function App() {
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                           <div className="avatar user-avatar" style={{ width: 32, height: 32, fontSize: '0.8rem' }}>
                             {m.User?.avatar ? <img src={m.User.avatar} style={{ width: '100%', borderRadius: '50%' }} /> : (m.User?.username?.[0] || 'U')}
-                          </div>
                           <div>
-                            <div className="setting-label" style={{ marginBottom: 0 }}>{m.User?.username} {m.userId === user?.id && '(You)'}</div>
-                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{m.role.toUpperCase()}</div>
+                            <div className="setting-label" style={{ marginBottom: 0 }}>
+                              {m.User?.username || 'Unknown'} {String(m.userId) === String(user?.id) && '(You)'}
+                            </div>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                              {m.role?.toUpperCase() || 'MEMBER'}
+                            </div>
                           </div>
                         </div>
                         
-                        {activeConv.creatorId === user?.id && m.userId !== user?.id && (
+                        {String(activeConv.creatorId) === String(user?.id) && String(m.userId) !== String(user?.id) && (
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button 
                               className="logout-btn" 
@@ -702,7 +706,7 @@ function App() {
                 </div>
 
                 <div className="setting-footer">
-                   {activeConv.creatorId === user?.id ? (
+                   {String(activeConv.creatorId) === String(user?.id) ? (
                      <button className="auth-btn" onClick={async () => {
                        try {
                          setIsUpdating(true);

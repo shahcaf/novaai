@@ -124,12 +124,18 @@ router.delete('/leave/:id', verifyToken, async (req, res) => {
 // Get all members of a conversation
 router.get('/members/:id', verifyToken, async (req, res) => {
   try {
+    console.log('Fetching members for conversation:', req.params.id);
     const members = await ConversationMember.findAll({
       where: { conversationId: req.params.id },
-      include: [{ model: User, attributes: ['id', 'username', 'avatar', 'email'] }]
+      include: [{ 
+        model: User, 
+        attributes: ['id', 'username', 'avatar', 'email'] 
+      }]
     });
+    console.log(`Found ${members.length} members.`);
     res.json(members);
   } catch (err) {
+    console.error('Error fetching members:', err);
     res.status(500).json({ error: err.message });
   }
 });
