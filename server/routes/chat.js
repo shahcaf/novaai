@@ -62,27 +62,43 @@ router.post('/', auth, async (req, res) => {
 
     let aiContent = "";
 
-    if (isGPT) {
-      const completion = await openai.chat.completions.create({
-        model: activeModel,
+    try {
+      if (isGPT) {
+        const completion = await openai.chat.completions.create({
+          model: activeModel,
+          messages: [
+            { role: "system", content: "You are Nova AI, powered by GPT-4. Be premium, helpful, and concise." },
+            ...processedMessages
+          ],
+          max_tokens: 1024,
+        });
+        aiContent = completion.choices[0].message.content;
+      } else {
+        const completion = await groq.chat.completions.create({
+          model: activeModel,
+          messages: [
+            { role: "system", content: "You are Nova AI, a helpful and friendly assistant." },
+            ...processedMessages
+          ],
+          temperature: 0.7,
+          max_tokens: 1024,
+        });
+        aiContent = completion.choices[0].message.content;
+      }
+    } catch (apiErr) {
+      console.error('Initial AI call failed, attempting fallback:', apiErr.message);
+      
+      // If it's a decommissioned error or any 400, try a guaranteed stable model
+      const fallbackCompletion = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
         messages: [
-          { role: "system", content: "You are Nova AI, powered by GPT-4. Be premium, helpful, and concise." },
-          ...processedMessages
-        ],
-        max_tokens: 1024,
-      });
-      aiContent = completion.choices[0].message.content;
-    } else {
-      const completion = await groq.chat.completions.create({
-        model: activeModel,
-        messages: [
-          { role: "system", content: "You are Nova AI, a helpful and friendly assistant." },
+          { role: "system", content: "You are Nova AI. (Note: The user's primary model was unavailable, so I am assisting them now)." },
           ...processedMessages
         ],
         temperature: 0.7,
         max_tokens: 1024,
       });
-      aiContent = completion.choices[0].message.content;
+      aiContent = fallbackCompletion.choices[0].message.content;
     }
     
     // Save to DB
@@ -101,7 +117,7 @@ router.post('/', auth, async (req, res) => {
 
     res.json({ content: aiContent });
   } catch (err) {
-    console.error('Groq AI Error:', err.response?.data || err);
+    console.error('Critical AI Error:', err.response?.data || err);
     res.status(500).json({ error: err.message || 'AI processing failed' });
   }
 });

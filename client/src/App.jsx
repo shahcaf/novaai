@@ -219,7 +219,7 @@ function App() {
                             activeModel.includes('3.3 (70B)') ? 'llama-3.3-70b-versatile' : 
                             activeModel.includes('3.1 (405B)') ? 'llama-3.1-405b-reasoning' :
                             activeModel.includes('3.1 (8B)') ? 'llama-3.1-8b-instant' : 
-                            activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : 'llama3-8b-8192';
+                            activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : 'llama-3.3-70b-versatile';
       
       const chatMessages = [...activeConv.messages, finalUserMessage].map(m => {
         const msgObj = { role: m.role, content: m.content || (m.mediaType === 'image' ? '[Image]' : `[User uploaded a ${m.mediaType || 'file'}]`) };
