@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
 import { Plus, Send, Square, Trash2, Settings, LogOut, Copy, RefreshCw, Edit2, Check, X, MessageSquare, Loader2 } from 'lucide-react';
@@ -42,6 +45,22 @@ function App() {
   const textareaRef = useRef(null);
   const editInputRef = useRef(null);
   const fileInputRef = useRef(null);
+  // --- Drag and Drop Logic ---
+  const onDrop = (acceptedFiles) => {
+    if (acceptedFiles && acceptedFiles.length > 0) {
+      const file = acceptedFiles[0];
+      setSelectedFile(file);
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => setFilePreview(reader.result);
+        reader.readAsDataURL(file);
+      } else {
+        setFilePreview('file');
+      }
+    }
+  };
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, noClick: true, noKeyboard: true });
+
   const abortControllerRef = useRef(null);
 
   const activeConv = conversations.find(c => c.id === activeId);
@@ -416,7 +435,15 @@ function App() {
   }
 
   return (
-    <div className="app-container" data-theme={theme.toLowerCase()}>
+    <div className="app-container" data-theme={theme.toLowerCase()} {...getRootProps()}>
+      {isDragActive && (
+        <div className="drag-overlay" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(16, 185, 129, 0.2)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '1rem', border: '2px dashed var(--accent)', color: 'var(--accent)', fontSize: '1.2rem', fontWeight: 'bold' }}>
+            Drop file to upload to Nova
+          </div>
+        </div>
+      )}
+      <input {...getInputProps()} />
       <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">N</div>
@@ -644,7 +671,38 @@ function App() {
                         </div>
                       )}
                       <div className="message-text">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <ReactMarkdown
+                          components={{
+                            code({node, inline, className, children, ...props}) {
+                              const match = /language-(\w+)/.exec(className || '')
+                              return !inline && match ? (
+                                <div className="code-block-wrapper" style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', margin: '12px 0' }}>
+                                  <div className="code-header" style={{ display: 'flex', justifyContent: 'space-between', background: '#1e1e1e', padding: '6px 12px', fontSize: '11px', color: '#9cdcfe', borderBottom: '1px solid #333' }}>
+                                    <span>{match[1]}</span>
+                                    <button onClick={() => navigator.clipboard.writeText(String(children).replace(/\n$/, ''))} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '11px' }}>
+                                      Copy Code
+                                    </button>
+                                  </div>
+                                  <SyntaxHighlighter
+                                    {...props}
+                                    style={vscDarkPlus}
+                                    language={match[1]}
+                                    PreTag="div"
+                                    customStyle={{ margin: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 }}
+                                  >
+                                    {String(children).replace(/\n$/, '')}
+                                  </SyntaxHighlighter>
+                                </div>
+                              ) : (
+                                <code {...props} className={className} style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 4px', borderRadius: '4px', fontSize: '0.9em' }}>
+                                  {children}
+                                </code>
+                              )
+                            }
+                          }}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
                       </div>
                       {msg.isAI && (
                         <div className="message-model-badge" style={{ fontSize: '9px', opacity: 0.4, marginTop: '8px', textAlign: 'right', fontStyle: 'italic' }}>
