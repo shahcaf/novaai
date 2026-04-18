@@ -183,9 +183,11 @@ router.post('/', auth, async (req, res) => {
 
       // FALLBACK: If OpenAI failed or key is missing, use Pollinations (Free & Fast)
       if (!imageUrl) {
-        console.log('🖼️ NOVA IMAGE GEN - FALLBACK (Pollinations):', prompt);
-        // Using Pollinations.ai for a high-quality free fallback
-        imageUrl = `https://pollinations.ai/p/${encodedPrompt}?width=1024&height=1024&seed=${Math.floor(Math.random()*100000)}&nologo=true&model=flux`;
+        const cleanPrompt = prompt.trim();
+        const encodedPrompt = encodeURIComponent(cleanPrompt);
+        console.log('🖼️ NOVA IMAGE GEN - FALLBACK (Pollinations):', cleanPrompt);
+        // Using the latest robust Pollinations.ai endpoint
+        imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${Math.floor(Math.random()*100000)}&nologo=true&model=flux`;
         generatorModel = "Nova Neural (Free Fallback)";
       }
 
