@@ -261,8 +261,8 @@ function App() {
         setConversations(prev => prev.map(c => 
           c.id === activeId ? { 
             ...c, 
-            messages: c.messages.map((m, idx) => 
-              idx === c.messages.length - 1 ? finalUserMessage : m
+            messages: (c.messages || []).map((m, idx) => 
+              idx === (c.messages?.length || 0) - 1 ? finalUserMessage : m
             ) 
           } : c
         ));
@@ -286,7 +286,8 @@ function App() {
                             activeModel.includes('3.1 (8B)') ? 'llama-3.1-8b-instant' : 
                             activeModel.includes('Mixtral') ? 'mixtral-8x7b-32768' : 'llama-3.1-8b-instant';
       
-      const chatMessages = [...(activeConv.messages || []), finalUserMessage].map(m => {
+      const currentMessages = activeConv?.messages || [];
+      const chatMessages = [...currentMessages, finalUserMessage].map(m => {
         const msgObj = { role: m.role, content: m.content || (m.mediaType === 'image' ? '[Image]' : `[User uploaded a ${m.mediaType || 'file'}]`) };
         if (m.mediaUrl && m.mediaType === 'image' && selectedModel.includes('vision')) {
           msgObj.mediaUrl = m.mediaUrl;
@@ -342,14 +343,14 @@ function App() {
   const handleEdit = (text, index) => {
     setInput(text);
     setConversations(prev => prev.map(c => 
-      c.id === activeId ? { ...c, messages: c.messages.slice(0, index) } : c
+      c.id === activeId ? { ...c, messages: (c.messages || []).slice(0, index) } : c
     ));
     textareaRef.current?.focus();
   };
 
   const handleRegenerate = async (index) => {
     if (isLoading) return;
-    const newMessages = activeConv.messages.slice(0, index);
+    const newMessages = (activeConv?.messages || []).slice(0, index);
     
     setConversations(prev => prev.map(c => 
       c.id === activeId ? { ...c, messages: newMessages } : c
