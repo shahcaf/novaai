@@ -641,17 +641,19 @@ function App() {
             </div>
           ) : (
             <AnimatePresence initial={false}>
-              {activeConv.messages.map((msg, i) => (
+              {activeConv.messages.map((msg, i) => {
+                const isUser = msg.role === 'user' || msg.isAI === false;
+                return (
                 <motion.div 
                   key={i} 
-                  className={`message-wrapper ${msg.role === 'user' ? 'user' : 'ai'}`}
+                  className={`message-wrapper ${isUser ? 'user' : 'ai'}`}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   layout
                 >
                   <div className="message-content">
-                    <div className={`avatar ${msg.role === 'user' ? 'user-avatar' : 'ai-avatar'}`}>
-                      {msg.role === 'user' ? (user?.username?.[0]?.toUpperCase() || 'U') : 'N'}
+                    <div className={`avatar ${isUser ? 'user-avatar' : 'ai-avatar'}`}>
+                      {isUser ? (user?.username?.[0]?.toUpperCase() || 'U') : 'N'}
                     </div>
                     <div className="message-box">
                       {msg.mediaUrl && (
@@ -710,7 +712,7 @@ function App() {
                         </div>
                       )}
                       <div className="msg-actions">
-                        {msg.role === 'user' ? (
+                        {isUser ? (
                           <button className="msg-action-btn" onClick={() => handleEdit(msg.content, i)} title="Edit Message">
                             <Edit2 size={14} /> Edit
                           </button>
