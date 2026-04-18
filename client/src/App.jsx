@@ -257,7 +257,7 @@ function App() {
   };
 
   const handleSend = async (text = input) => {
-    if (!text.trim() || isLoading) return;
+    if ((!text.trim() && !selectedFile) || isLoading) return;
 
     abortControllerRef.current = new AbortController();
 

@@ -225,6 +225,10 @@ router.post('/', auth, async (req, res) => {
 
     // Prepare multi-modal/contextual messages
     const processedMessages = await Promise.all(messages.map(async (msg) => {
+      const role = msg.role || (msg.isAI ? 'assistant' : 'user');
+      
+      // If the message already has attachment tags in content (from DB), keep them
+      // This handles cases where the file no longer exists on disk (e.g. server restarts)
       if (msg.mediaUrl) {
         const relativePath = msg.mediaUrl.startsWith('/') ? msg.mediaUrl.slice(1) : msg.mediaUrl;
         const filePath = path.join(__dirname, '..', relativePath);
@@ -238,17 +242,16 @@ router.post('/', auth, async (req, res) => {
               const imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
               const mimeType = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
               return {
-                role: msg.role,
+                role,
                 content: [
                   { type: 'text', text: msg.content || "Describe this image." },
                   { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
                 ]
               };
             } else {
-              // Fallback for non-vision models: Acknowledgement
               return {
-                role: msg.role,
-                content: `${msg.content || ""}\n\n[USER ATTACHMENT: ${path.basename(filePath)}]\n(Note to AI: The user has attached an image file. While you are in a text-only mode, acknowledge that you have received the file and ask the user to describe it if you need specific details.)`
+                role,
+                content: `${msg.content || ""}\n\n[USER ATTACHMENT: ${path.basename(filePath)}]\n(Note: The user sent an image. Acknowledge it and answer any questions about it based on context.)`
               };
             }
           }
@@ -258,42 +261,37 @@ router.post('/', auth, async (req, res) => {
             try {
               const dataBuffer = fs.readFileSync(filePath);
               const data = await pdf(dataBuffer);
-              return {
-                role: msg.role,
-                content: `${msg.content || ""}\n\n[DOCUMENT ATTACHMENT: ${path.basename(filePath)}]\n${data.text}`
-              };
-            } catch (pdfErr) {
-              console.error('PDF Parse Error:', pdfErr);
-            }
+              return { role, content: `${msg.content || ""}\n\n[DOCUMENT ATTACHMENT: ${path.basename(filePath)}]\n${data.text}` };
+            } catch (pdfErr) { console.error('PDF Parse Error:', pdfErr); }
           }
 
           // Case 3: Document Parsing (DOCX)
           if (ext === '.docx') {
             try {
               const result = await mammoth.extractRawText({ path: filePath });
-              return {
-                role: msg.role,
-                content: `${msg.content || ""}\n\n[DOCUMENT ATTACHMENT: ${path.basename(filePath)}]\n${result.value}`
-              };
-            } catch (docxErr) {
-              console.error('DOCX Parse Error:', docxErr);
-            }
+              return { role, content: `${msg.content || ""}\n\n[DOCUMENT ATTACHMENT: ${path.basename(filePath)}]\n${result.value}` };
+            } catch (docxErr) { console.error('DOCX Parse Error:', docxErr); }
           }
           
-          // Case 4: Code/Text Reading (Context Injection)
+          // Case 4: Code/Text Reading
           const textExtensions = ['.js', '.jsx', '.ts', '.tsx', '.json', '.txt', '.py', '.html', '.css', '.md'];
           if (textExtensions.includes(ext)) {
             const fileContent = fs.readFileSync(filePath, 'utf8');
             const truncatedContent = fileContent.length > 10000 ? fileContent.slice(0, 10000) + "...[content truncated]" : fileContent;
-            return {
-              role: msg.role,
-              content: `${msg.content || ""}\n\n[FILE ATTACHMENT: ${path.basename(filePath)}]\n\`\`\`${ext.slice(1) || 'text'}\n${truncatedContent}\n\`\`\``
-            };
+            return { role, content: `${msg.content || ""}\n\n[FILE ATTACHMENT: ${path.basename(filePath)}]\n\`\`\`${ext.slice(1) || 'text'}\n${truncatedContent}\n\`\`\`` };
           }
         }
+        
+        // FILE NOT ON DISK — but content from DB already has the [ATTACHMENT] tag injected
+        // Just pass it through as-is so AI can still reference it by name
+        return { role, content: msg.content || `[User sent a file: ${msg.mediaUrl}]` };
       }
-      return { role: msg.role, content: msg.content || "" };
+      
+      return { role, content: msg.content || "" };
     }));
+          
+
+
 
     let aiContent = "";
     let actualModelUsed = activeModel;
