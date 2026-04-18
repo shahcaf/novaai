@@ -339,10 +339,12 @@ function App() {
       const currentMessages = activeConv?.messages || [];
       const chatMessages = [...currentMessages, finalUserMessage].map(m => {
         const role = m.role || (m.isAI ? 'assistant' : 'user');
-        const msgObj = { role, content: m.content || (m.mediaType === 'image' ? '[Image]' : `[User uploaded a ${m.mediaType || 'file'}]`) };
-        if (m.mediaUrl && m.mediaType === 'image' && selectedModel.includes('vision')) {
-          msgObj.mediaUrl = m.mediaUrl;
-        }
+        const msgObj = { 
+          role, 
+          content: m.content || (m.mediaType === 'image' ? '[Image]' : `[User uploaded a ${m.mediaType || 'file'}]`),
+          mediaUrl: m.mediaUrl || null,
+          mediaType: m.mediaType || null
+        };
         return msgObj;
       });
 
