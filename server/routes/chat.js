@@ -322,39 +322,61 @@ router.post('/', auth, async (req, res) => {
           if (ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp' || ext === '.gif') {
             const fileName = path.basename(filePath);
             const tag = `[SYSTEM] --- PLATFORM NOTIFICATION: File Successfully Attached (${fileName}) ---`;
-            const enrichedText = `${msg.content || ""}\n\n${tag}`.trim();
+            const userText = msg.content || '';
 
-            // VISION SLIDING WINDOW: Include visual data for images in the last 3 messages.
-            // This ensures follow-up questions ("what is this?") correctly see the image turn.
+            // VISION SLIDING WINDOW: only embed raw pixels for recent messages
             const isRecent = index >= messages.length - 3;
 
-            if (isVisionModel && isRecent) {
-              try {
-                const imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
-                const mimeType = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
-                return {
-                  role,
-                  content: [
-                    { type: 'text', text: enrichedText },
-                    { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
-                  ]
-                };
-              } catch (readErr) {
-                console.error('Vision Read error:', readErr);
-                return { role, content: enrichedText };
-              }
-            } else {
-              // OCR FALLBACK: If model is text-only or image is in history, extract text so AI still has context
-              try {
-                const { data: { text } } = await Tesseract.recognize(filePath, 'eng');
-                if (text && text.trim().length > 0) {
-                  return { role, content: `${enrichedText}\n\n[IMAGE OCR DATA (EXTRACTED TEXT)]:\n${text.trim()}\n\n[SYSTEM DIRECTIVE TO AI]: You have successfully extracted and 'opened' this file via OCR. You MUST explicitly acknowledge to the user that you are viewing the file and proceed to answer their questions based on the extracted text above.` };
-                }
-              } catch (ocrErr) {
-                console.error('OCR Fallback error:', ocrErr);
-              }
-              return { role, content: enrichedText };
+            // Always read base64 — used for both GPT/Gemini native vision AND Groq vision fallback
+            let imageBase64 = null;
+            let mimeType = 'image/jpeg';
+            try {
+              imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
+              mimeType = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+            } catch (readErr) {
+              console.error('Image read error:', readErr);
             }
+
+            // --- Path A: Native vision models (GPT-4o / Gemini) ---
+            if (isVisionModel && isRecent && imageBase64) {
+              return {
+                role,
+                content: [
+                  { type: 'text', text: `${userText}\n\n${tag}`.trim() },
+                  { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
+                ]
+              };
+            }
+
+            // --- Path B: Use Groq Vision (llama-3.2-11b-vision-preview) to describe image ---
+            // This gives REAL vision to ALL text-only models like Llama, Mixtral, DeepSeek
+            if (imageBase64) {
+              try {
+                console.log('🔍 NOVA VISION: Running Groq Vision analysis on', fileName);
+                const visionResult = await groq.chat.completions.create({
+                  model: 'llama-3.2-11b-vision-preview',
+                  messages: [{
+                    role: 'user',
+                    content: [
+                      { type: 'text', text: 'Describe this image in complete detail. Include ALL visible text (copy it verbatim), UI elements, code, colors, layout, and any important information. Be thorough.' },
+                      { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
+                    ]
+                  }],
+                  max_tokens: 1024,
+                  temperature: 0.1
+                });
+                const visionDescription = visionResult.choices[0]?.message?.content || '';
+                if (visionDescription.trim()) {
+                  const enriched = `${userText}\n\n${tag}\n\n[NOVA VISION ANALYSIS - IMAGE CONTENT]:\n${visionDescription}\n\n[SYSTEM DIRECTIVE]: The above is a full analysis of the user's image. Treat it as ground truth. Acknowledge you have seen and analyzed the image, then answer based on the analysis above.`.trim();
+                  return { role, content: enriched };
+                }
+              } catch (visionErr) {
+                console.error('Groq Vision fallback error:', visionErr.message);
+              }
+            }
+
+            // --- Path C: Last resort plain text tag ---
+            return { role, content: `${userText}\n\n${tag}`.trim() };
           }
           
           // Case 2: Document Parsing (PDF)
