@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
-import { Plus, Send, Square, Trash2, Share2, Users, Link as LinkIcon, Settings, LogOut, Shield, ShieldAlert, UserMinus } from 'lucide-react';
+import { Plus, Send, Square, Trash2, Settings, LogOut } from 'lucide-react';
 import { io } from 'socket.io-client';
 
 const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
@@ -43,10 +43,6 @@ function App() {
   const [aiSpeed, setAiSpeed] = useState('Fast');
   const [editUsername, setEditUsername] = useState(user?.username || '');
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isTeamSettingsOpen, setIsTeamSettingsOpen] = useState(false);
-  const [teamName, setTeamName] = useState('');
-  const [customInviteCode, setCustomInviteCode] = useState('');
-  const [teamMembers, setTeamMembers] = useState([]);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -74,73 +70,17 @@ function App() {
     if (editingId && editInputRef.current) editInputRef.current.focus();
   }, [editingId]);
 
-  const fetchMembers = async (id = activeId) => {
-    try {
-      if (!id || id === 'default') return;
-      const res = await axios.get(`${API_URL}/api/team/members/${id}`, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
-      });
-      setTeamMembers(res.data);
-    } catch (err) {
-      console.error('Fetch members error:', err);
-    }
-  };
 
-  const handleKick = async (memberUserId) => {
-    if (!window.confirm('Are you sure you want to kick this member?')) return;
-    try {
-      await axios.delete(`${API_URL}/api/team/kick/${activeId}/${memberUserId}`, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
-      });
-      fetchMembers();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to kick');
-    }
-  };
-
-  const handleUpdateRole = async (memberUserId, newRole) => {
-    try {
-      await axios.put(`${API_URL}/api/team/role/${activeId}/${memberUserId}`, { role: newRole }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
-      });
-      fetchMembers();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to update role');
-    }
-  };
-
-  const createNewConversation = async (isShared = false) => {
-    if (isShared) {
-      try {
-        const res = await axios.post(`${API_URL}/api/team/create`, { title: 'New Team Chat' }, {
-          headers: { 'x-auth-token': localStorage.getItem('token') }
-        });
-        const teamConv = {
-          id: String(res.data.id),
-          title: res.data.title,
-          messages: [],
-          createdAt: res.data.createdAt,
-          isShared: true,
-          inviteCode: res.data.inviteCode,
-          creatorId: String(user.id)
-        };
-        setConversations([teamConv, ...conversations]);
-        setActiveId(teamConv.id);
-      } catch (err) {
-        console.error(err);
-        alert('Failed to create team chat on server.');
-      }
-    } else {
-      const newConv = {
-        id: Date.now().toString(),
-        title: 'New Chat',
-        messages: [],
-        createdAt: new Date().toISOString(),
-        isShared: false
-      };
-      setConversations([newConv, ...conversations]);
-      setActiveId(newConv.id);
-    }
+  const createNewConversation = () => {
+    const newConv = {
+      id: Date.now().toString(),
+      title: 'New Chat',
+      messages: [],
+      createdAt: new Date().toISOString(),
+      isShared: false
+    };
+    setConversations([newConv, ...conversations]);
+    setActiveId(newConv.id);
     setIsSidebarOpen(false);
   };
 
@@ -168,93 +108,12 @@ function App() {
       setIsSettingsOpen(false);
     }
   };
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const inviteCode = params.get('invite');
-    if (inviteCode && user) {
-      handleJoinConversation(inviteCode);
-    }
-  }, [user]);
 
-  const handleJoinConversation = async (code) => {
-    try {
-      const res = await axios.post(`${API_URL}/api/team/join/${code}`, {}, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
-      });
-      alert(res.data.message || 'Joined team successfully!');
-      // Remove param from URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      // Refresh convs
-      fetchConversations();
-    } catch (err) {
-      console.error(err);
-      alert('Failed to join team: ' + (err.response?.data?.error || err.message));
-    }
-  };
 
   const fetchConversations = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token || !user) return;
-
-      const res = await axios.get(`${API_URL}/api/team/my-chats`, {
-        headers: { 'x-auth-token': token }
-      });
-
-      const sharedConvs = res.data.map(c => ({
-        id: String(c.id),
-        title: c.title,
-        messages: c.Messages || [],
-        createdAt: c.createdAt,
-        isShared: true,
-        inviteCode: c.inviteCode,
-        creatorId: String(c.creatorId)
-      }));
-
-      setConversations(prev => {
-        const local = prev.filter(p => !p.isShared);
-        const merged = [...local, ...sharedConvs];
-        return merged.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      });
-    } catch (err) {
-      console.error('Fetch error:', err);
-    }
+    // Team features removed. Solo mode only.
   };
 
-  const handleLeaveTeam = async () => {
-    if (String(activeConv.creatorId) === String(user?.id)) {
-      alert('As the Owner, you cannot leave. Please use "Delete Team" instead if you want to close this chat.');
-      return;
-    }
-    if (!window.confirm('Are you sure you want to leave this team?')) return;
-    try {
-      await axios.delete(`${API_URL}/api/team/leave/${activeId}`, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
-      });
-      alert('You have left the team.');
-      setIsTeamSettingsOpen(false);
-      setConversations(prev => prev.filter(c => c.id !== activeId));
-      setActiveId('default');
-      fetchConversations();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to leave team');
-    }
-  };
-
-  const handleDeleteTeam = async () => {
-    if (!window.confirm('WARNING: This will permanently delete the team chat and all messages for everyone. Proceed?')) return;
-    try {
-      await axios.delete(`${API_URL}/api/team/delete/${activeId}`, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
-      });
-      alert('Team chat deleted.');
-      setIsTeamSettingsOpen(false);
-      setConversations(prev => prev.filter(c => c.id !== activeId));
-      setActiveId('default');
-      fetchConversations();
-    } catch (err) {
-    }
-  };
 
   const shareConversation = () => {
     if (!activeConv.inviteCode) {
@@ -291,27 +150,7 @@ function App() {
     setEditingId(null);
   };
 
-  useEffect(() => {
-    if (activeId && socket) {
-      socket.emit('joinConversation', activeId);
-    }
-  }, [activeId]);
 
-  useEffect(() => {
-    socket.on('message', (msg) => {
-      // Only append if it's from someone else or AI (since we append locally on send for speed)
-      setConversations(prev => prev.map(c => {
-        if (c.id === msg.conversationId) {
-          // Avoid duplicates
-          const exists = c.messages.some(m => m.id === msg.id || (m.timestamp === msg.timestamp && m.content === msg.content));
-          if (exists) return c;
-          return { ...c, messages: [...c.messages, msg] };
-        }
-        return c;
-      }));
-    });
-    return () => socket.off('message');
-  }, []);
 
   const handleSend = async (text = input) => {
     if (!text.trim() || isLoading) return;
@@ -335,34 +174,23 @@ function App() {
     setIsLoading(true);
 
     try {
-      if (activeConv.isShared) {
-        // Shared chat: Send via Socket (Backend saves it)
-        socket.emit('sendMessage', {
-          senderId: user.id,
-          conversationId: activeId,
-          content: text
-        });
-        setIsLoading(false);
-      } else {
-        // Local/Private Chat: Original AI Logic
-        const response = await axios.post(`${API_URL}/api/chat`, {
-          messages: [...activeConv.messages, userMessage].map(m => ({ role: m.role, content: m.content }))
-        }, {
-          headers: { 'x-auth-token': localStorage.getItem('token') },
-          signal: abortControllerRef.current.signal
-        });
+      const response = await axios.post(`${API_URL}/api/chat`, {
+        messages: [...activeConv.messages, userMessage].map(m => ({ role: m.role, content: m.content }))
+      }, {
+        headers: { 'x-auth-token': localStorage.getItem('token') },
+        signal: abortControllerRef.current.signal
+      });
 
-        const aiMessage = { 
-          role: 'assistant', 
-          content: response.data.content, 
-          timestamp: new Date().toISOString(),
-          isNew: true 
-        };
+      const aiMessage = { 
+        role: 'assistant', 
+        content: response.data.content, 
+        timestamp: new Date().toISOString(),
+        isNew: true 
+      };
 
-        setConversations(prev => prev.map(c => 
-          c.id === activeId ? { ...c, messages: [...c.messages, aiMessage] } : c
-        ));
-      }
+      setConversations(prev => prev.map(c => 
+        c.id === activeId ? { ...c, messages: [...c.messages, aiMessage] } : c
+      ));
     } catch (err) {
       // ... same error handling ...
     } finally {
@@ -463,30 +291,14 @@ function App() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
-          <button className="new-chat-btn" style={{ flex: 1 }} onClick={() => createNewConversation(false)}>
-            ＋ Personal
+          <button className="new-chat-btn" style={{ flex: 1 }} onClick={createNewConversation}>
+            ＋ New Chat
           </button>
-          {(!conversations.some(c => c.isShared && c.creatorId !== user?.id)) && (
-            <button className="new-chat-btn team-btn-accent" style={{ flex: 1 }} onClick={() => createNewConversation(true)}>
-              ＋ Team Chat
-            </button>
-          )}
         </div>
 
         <button className="sidebar-action-btn" onClick={() => setIsSettingsOpen(true)}>
           <Settings size={18} /> Settings
         </button>
-
-        {activeConv?.isShared && (
-          <button className="sidebar-action-btn" onClick={() => {
-            setTeamName(activeConv.title);
-            setCustomInviteCode(activeConv.inviteCode || '');
-            fetchMembers(String(activeConv.id));
-            setIsTeamSettingsOpen(true);
-          }} title="Manage Team / Share Link">
-            <Users size={18} /> Team Settings
-          </button>
-        )}
 
         <div className="sidebar-scroll">
           {Object.entries(grouped).map(([label, convs]) => (
@@ -632,141 +444,6 @@ function App() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {isTeamSettingsOpen && (
-          <div className="modal-overlay" onClick={() => setIsTeamSettingsOpen(false)}>
-            <motion.div 
-              className="settings-modal" 
-              onClick={e => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-            >
-              <div className="modal-header">
-                <h3>Team & Share Settings</h3>
-                <button className="close-btn" onClick={() => setIsTeamSettingsOpen(false)}>✕</button>
-              </div>
-              <div className="modal-body">
-                <div className="setting-section">
-                  <h4>Collaborative Workspace</h4>
-                  <div className="setting-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
-                    <div className="setting-label">Team Chat Name</div>
-                    <input 
-                      className="setting-input" 
-                      style={{ width: '100%', maxWidth: 'none' }}
-                      value={teamName} 
-                      onChange={e => setTeamName(e.target.value)}
-                      placeholder="e.g. Project Alpha"
-                      disabled={activeConv.creatorId !== user?.id}
-                    />
-                  </div>
-                  
-                  <div className="setting-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
-                    <div className="setting-label">Custom Invite Link</div>
-                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                      <div className="setting-input" style={{ flex: 1, color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center' }}>
-                        nova.ai/join/
-                        <input 
-                          style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '0', outline: 'none', marginLeft: '4px', flex: 1 }}
-                          value={customInviteCode}
-                          onChange={e => setCustomInviteCode(e.target.value)}
-                          placeholder="your-code"
-                          disabled={activeConv.creatorId !== user?.id}
-                        />
-                      </div>
-                      <button 
-                        className="save-mini-btn" 
-                        style={{ height: '38px', whiteSpace: 'nowrap' }}
-                        onClick={() => {
-                          const url = `https://novaai-zeta.vercel.app/join/${customInviteCode || activeConv.inviteCode}`;
-                          navigator.clipboard.writeText(url);
-                          alert('Full invite link copied to clipboard!');
-                        }}
-                      >
-                        Copy Link
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="setting-section">
-                  <h4>Active Members</h4>
-                  <div className="member-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {teamMembers.map(m => (
-                      <div key={m.userId} className="setting-item" style={{ background: 'rgba(0,0,0,0.05)', padding: '10px', borderRadius: '8px' }}>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                          <div className="avatar user-avatar" style={{ width: 32, height: 32, fontSize: '0.8rem' }}>
-                            {m.User?.avatar ? <img src={m.User.avatar} style={{ width: '100%', borderRadius: '50%' }} /> : (m.User?.username?.[0] || 'U')}
-                          <div>
-                            <div className="setting-label" style={{ marginBottom: 0 }}>
-                              {m.User?.username || 'Unknown'} {String(m.userId) === String(user?.id) && '(You)'}
-                            </div>
-                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                              {m.role?.toUpperCase() || 'MEMBER'}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {String(activeConv.creatorId) === String(user?.id) && String(m.userId) !== String(user?.id) && (
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button 
-                              className="logout-btn" 
-                              style={{ color: 'var(--accent)', padding: '4px' }}
-                              onClick={() => handleUpdateRole(m.userId, m.role === 'admin' ? 'member' : 'admin')}
-                              title={m.role === 'admin' ? "Demote to Member" : "Promote to Admin"}
-                            >
-                              {m.role === 'admin' ? <ShieldAlert size={16} /> : <Shield size={16} />}
-                            </button>
-                            <button 
-                              className="logout-btn" 
-                              style={{ color: '#ff4d4d', padding: '4px' }}
-                              onClick={() => handleKick(m.userId)}
-                              title="Kick Member"
-                            >
-                              <UserMinus size={16} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="setting-footer">
-                   {String(activeConv.creatorId) === String(user?.id) ? (
-                     <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
-                       <button className="auth-btn" style={{ flex: 2 }} onClick={async () => {
-                         try {
-                           setIsUpdating(true);
-                           await axios.put(`${API_URL}/api/team/update/${activeId}`, { title: teamName, inviteCode: customInviteCode }, {
-                             headers: { 'x-auth-token': localStorage.getItem('token') }
-                           });
-                           setConversations(prev => prev.map(c => 
-                             c.id === activeId ? { ...c, title: teamName, inviteCode: customInviteCode } : c
-                           ));
-                           alert('Team settings updated successfully!');
-                           setIsTeamSettingsOpen(false);
-                         } catch(err) {
-                           alert(err.response?.data?.error || 'Failed to update');
-                         } finally {
-                           setIsUpdating(false);
-                         }
-                       }}>Save Team Preferences</button>
-                       <button className="auth-btn" style={{ flex: 1, background: '#ff4d4d' }} onClick={handleDeleteTeam}>
-                         Delete Team
-                       </button>
-                     </div>
-                   ) : (
-                     <button className="auth-btn" style={{ background: '#ff4d4d' }} onClick={handleLeaveTeam}>
-                       Leave Team Chat
-                     </button>
-                   )}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       <main className="chat-main" style={{ fontSize: fontSize === 'Small' ? '0.9rem' : fontSize === 'Large' ? '1.1rem' : '1rem' }}>
         <header className="chat-header">
@@ -774,18 +451,7 @@ function App() {
             <button className="menu-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>☰</button>
             <div className="header-title">Nova AI</div>
           </div>
-          <div className="header-actions" style={{ display: 'flex', gap: '12px' }}>
-            <button className="menu-btn" style={{ background: 'var(--accent)', color: 'white', padding: '0 12px', fontSize: '0.8rem', width: 'auto', borderRadius: '6px' }} onClick={() => {
-              const code = activeConv.inviteCode || Math.random().toString(36).substring(7);
-              const url = `${window.location.origin}?invite=${code}`;
-              navigator.clipboard.writeText(url);
-              alert('Team Link Copied!');
-            }}>
-              <LinkIcon size={14} style={{ marginRight: 6 }} /> Copy Team Link
-            </button>
-            <button className="menu-btn" onClick={shareConversation} title="Invite Friend to Chat">
-              <Share2 size={18} />
-            </button>
+          <div className="header-actions">
             <button className="menu-btn" onClick={() => setIsSettingsOpen(true)} title="Settings">
               <Settings size={18} />
             </button>
