@@ -40,6 +40,9 @@ function App() {
   const [aiSpeed, setAiSpeed] = useState('Fast');
   const [editUsername, setEditUsername] = useState(user?.username || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isTeamSettingsOpen, setIsTeamSettingsOpen] = useState(false);
+  const [teamName, setTeamName] = useState('');
+  const [customInviteCode, setCustomInviteCode] = useState('');
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -324,8 +327,12 @@ function App() {
           <Settings size={18} /> Settings
         </button>
 
-        <button className="sidebar-action-btn" onClick={shareConversation} title="Invite Friends / Team Link">
-          <Users size={18} /> Invite to Team
+        <button className="sidebar-action-btn" onClick={() => {
+          setTeamName(activeConv.title);
+          setCustomInviteCode(activeConv.inviteCode || '');
+          setIsTeamSettingsOpen(true);
+        }} title="Manage Team / Share Link">
+          <Users size={18} /> Team Settings
         </button>
 
         <div className="sidebar-scroll">
@@ -465,6 +472,84 @@ function App() {
 
                 <div className="setting-footer">
                   <div className="v-info">Nova Cloud · v2.1.5 · Build 502</div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isTeamSettingsOpen && (
+          <div className="modal-overlay" onClick={() => setIsTeamSettingsOpen(false)}>
+            <motion.div 
+              className="settings-modal" 
+              onClick={e => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+            >
+              <div className="modal-header">
+                <h3>Team & Share Settings</h3>
+                <button className="close-btn" onClick={() => setIsTeamSettingsOpen(false)}>✕</button>
+              </div>
+              <div className="modal-body">
+                <div className="setting-section">
+                  <h4>Collaborative Workspace</h4>
+                  <div className="setting-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
+                    <div className="setting-label">Team Chat Name</div>
+                    <input 
+                      className="setting-input" 
+                      style={{ width: '100%', maxWidth: 'none' }}
+                      value={teamName} 
+                      onChange={e => setTeamName(e.target.value)}
+                      placeholder="e.g. Project Alpha"
+                    />
+                  </div>
+                  
+                  <div className="setting-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
+                    <div className="setting-label">Custom Invite Link</div>
+                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                      <div className="setting-input" style={{ flex: 1, color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center' }}>
+                        nova.ai/join/
+                        <input 
+                          style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '0', outline: 'none', marginLeft: '4px', flex: 1 }}
+                          value={customInviteCode}
+                          onChange={e => setCustomInviteCode(e.target.value)}
+                          placeholder="your-code"
+                        />
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Share this link to add friends to this specific chat.</p>
+                  </div>
+                </div>
+
+                <div className="setting-section">
+                  <h4>Active Members</h4>
+                  <div className="setting-item">
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <div className="avatar user-avatar" style={{ width: 24, height: 24, fontSize: '0.6rem' }}>{user?.username?.[0] || 'U'}</div>
+                      <div className="setting-label">{user?.username} (You)</div>
+                    </div>
+                    <div className="setting-value" style={{ fontSize: '0.75rem', color: 'var(--accent)' }}>Owner</div>
+                  </div>
+                </div>
+
+                <div className="setting-footer">
+                   <button className="auth-btn" onClick={async () => {
+                     try {
+                       setIsUpdating(true);
+                       setConversations(prev => prev.map(c => 
+                         c.id === activeId ? { ...c, title: teamName, inviteCode: customInviteCode } : c
+                       ));
+                       alert('Team settings updated successfully!');
+                       setIsTeamSettingsOpen(false);
+                     } catch(err) {
+                       console.error(err);
+                     } finally {
+                       setIsUpdating(false);
+                     }
+                   }}>Save Team Preferences</button>
                 </div>
               </div>
             </motion.div>

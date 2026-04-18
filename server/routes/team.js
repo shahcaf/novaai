@@ -77,6 +77,30 @@ router.post('/join/:code', verifyToken, async (req, res) => {
     });
 
     res.json({ message: 'Joined successfully', conversation });
+// Update conversation settings (Team Name / Code)
+router.put('/update/:id', verifyToken, async (req, res) => {
+  try {
+    const { title, inviteCode } = req.body;
+    const conversation = await Conversation.findByPk(req.params.id);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+
+    // Verify ownership
+    if (conversation.creatorId !== req.user.id) {
+      return res.status(403).json({ error: 'Only owners can change settings' });
+    }
+
+    if (title) conversation.title = title;
+    if (inviteCode) {
+      // Check for uniqueness
+      const existing = await Conversation.findOne({ where: { inviteCode } });
+      if (existing && existing.id !== conversation.id) {
+        return res.status(400).json({ error: 'Invite code already in use' });
+      }
+      conversation.inviteCode = inviteCode;
+    }
+
+    await conversation.save();
+    res.json(conversation);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
