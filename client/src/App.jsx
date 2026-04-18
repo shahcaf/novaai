@@ -10,7 +10,7 @@ import { AuthContext } from './context/AuthContext';
 import { Plus, Send, Square, Trash2, Settings, LogOut, Copy, RefreshCw, Edit2, Check, X, MessageSquare, Loader2, Search } from 'lucide-react';
 
 const isLocal = window.location.hostname === 'localhost';
-const API_URL = isLocal ? 'http://localhost:5000' : (import.meta.env.VITE_API_URL || 'https://novaai-zeta.vercel.app');
+const API_URL = isLocal ? 'http://localhost:5000' : (import.meta.env.VITE_API_URL || 'https://novaai-6o4n.onrender.com');
 
 const SUGGESTIONS = [
   { title: '✍️ Write a story', text: 'about a time-traveling robot in ancient Rome.' },
