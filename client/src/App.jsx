@@ -487,7 +487,8 @@ function App() {
       setStagedMedia({
         url: res.data.mediaUrl,
         type: res.data.mediaType,
-        content: res.data.content
+        // Use the Groq Vision analysis if available, otherwise fallback to content
+        content: res.data.visionContent || res.data.content || ''
       });
     } catch (err) {
       console.error('Eager Upload Failed:', err);
