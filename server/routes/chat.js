@@ -174,9 +174,9 @@ router.post('/', auth, async (req, res) => {
       // so the AI knows about it even after forceStringMessages strips extra fields
       if (m.mediaUrl && typeof m.mediaUrl === 'string' && m.mediaUrl.length > 1) {
         const fileName = m.mediaUrl.split('/').pop() || 'file';
-        if (!content.includes('[USER ATTACHMENT') && !content.includes('[DOCUMENT ATTACHMENT') && !content.includes('[FILE ATTACHMENT')) {
+        if (!content.includes('PLATFORM NOTIFICATION')) {
           const attachType = (m.mediaType === 'image') ? 'image' : (m.mediaType || 'file');
-          content = `${content}\n\n[USER ATTACHMENT: ${fileName} (${attachType})]`.trim();
+          content = `${content}\n\n[SYSTEM] --- PLATFORM NOTIFICATION: File Successfully Attached (${fileName}) ---`.trim();
         }
       }
       
@@ -209,8 +209,11 @@ router.post('/', auth, async (req, res) => {
     basePrompt += " Use clear typography, bolded keywords, and properly formatted code blocks. Ensure your tone always feels sophisticated.";
 
     basePrompt += `\n\n[INTELLIGENCE CONTEXT]: Your current engine is "${activeModel}". 
-[MULTIMODAL CAPABILITY]: If you see a message containing "[USER ATTACHMENT]" or "[FILE ATTACHMENT]", this means the Nova platform has successfully parsed the user's file and injected the data for you. Treat these files as if you are looking at them directly. Never apologize for being 'text-only' if the data is present in the prompt.
-[IMAGE GENERATION]: If the user asks for an image, provide a brief confirmation. The Nova Vision engine triggers automatically on phrases like 'generate an image', 'make me a', 'design me a', or '/imagine'.`;
+[SYSTEM PROTOCOL]: If you see a message containing "[SYSTEM] --- PLATFORM NOTIFICATION: File Successfully Attached", this means the Nova platform has successfully parsed the user's file and context is available to you. 
+1. Treat these files as if you have seen/read them already.
+2. NEVER ask the user to re-attach or re-type the file name.
+3. NEVER assume you are text-only if a file context is present.
+[IMAGE GENERATION]: Confirmation only. Internal generator triggers on 'generate', 'make me a', 'design', or '/imagine'.`;
 
     // IMAGE GENERATION HEURISTIC
     const lastUserMessage = messages[messages.length - 1]?.content;
