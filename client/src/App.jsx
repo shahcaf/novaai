@@ -33,6 +33,10 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingTitle, setEditingTitle] = useState('');
+  
+  // Settings State
+  const [activeModel, setActiveModel] = useState('Llama 3.3 (70B)');
+  const [fontSize, setFontSize] = useState('Medium');
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -75,6 +79,20 @@ function App() {
     }
   };
 
+  const clearAllHistory = () => {
+    if (window.confirm('Are you sure you want to delete ALL chat history? This cannot be undone.')) {
+      const resetConv = [{ 
+        id: 'default', 
+        title: 'New Chat', 
+        messages: [], 
+        createdAt: new Date().toISOString() 
+      }];
+      setConversations(resetConv);
+      setActiveId('default');
+      setIsSettingsOpen(false);
+    }
+  };
+
   const startEditing = (conv, e) => {
     e.stopPropagation();
     setEditingId(conv.id);
@@ -100,7 +118,6 @@ function App() {
     
     const updatedMessages = [...activeConv.messages, userMessage];
     
-    // Auto-rename if it's the first message
     let newTitle = activeConv.title;
     if (activeConv.title === 'New Chat') {
       newTitle = text.slice(0, 30) + (text.length > 30 ? '...' : '');
@@ -219,7 +236,6 @@ function App() {
         </div>
       </aside>
 
-      {/* ─── Settings Modal ─────────────────── */}
       <AnimatePresence>
         {isSettingsOpen && (
           <div className="modal-overlay" onClick={() => setIsSettingsOpen(false)}>
@@ -231,24 +247,54 @@ function App() {
               exit={{ opacity: 0, scale: 0.95 }}
             >
               <div className="modal-header">
-                <h3>Settings</h3>
+                <h3>System Settings</h3>
                 <button className="close-btn" onClick={() => setIsSettingsOpen(false)}>✕</button>
               </div>
               <div className="modal-body">
-                <div className="setting-item">
-                  <div className="setting-label">Theme</div>
-                  <div className="setting-value">Dark (Always)</div>
+                <div className="setting-section">
+                  <h4>Profile & Account</h4>
+                  <div className="setting-item">
+                    <div className="setting-label">Email Address</div>
+                    <div className="setting-value">{user?.email}</div>
+                  </div>
+                  <div className="setting-item">
+                    <div className="setting-label">Membership</div>
+                    <div className="setting-value" style={{ color: 'var(--accent)' }}>Basic Plan</div>
+                  </div>
                 </div>
-                <div className="setting-item">
-                  <div className="setting-label">Account</div>
-                  <div className="setting-value">{user?.email}</div>
+
+                <div className="setting-section">
+                  <h4>Chat Preferences</h4>
+                  <div className="setting-item">
+                    <div className="setting-label">AI Model</div>
+                    <select value={activeModel} onChange={e => setActiveModel(e.target.value)} className="setting-select">
+                      <option>Llama 3.3 (70B)</option>
+                      <option>Mixtral 8x7B</option>
+                      <option>Gemma 2 (9B)</option>
+                    </select>
+                  </div>
+                  <div className="setting-item">
+                    <div className="setting-label">Text Size</div>
+                    <select value={fontSize} onChange={e => setFontSize(e.target.value)} className="setting-select">
+                      <option>Small</option>
+                      <option>Medium</option>
+                      <option>Large</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="setting-item">
-                  <div className="setting-label">API Status</div>
-                  <div className="setting-value" style={{ color: '#4caf50' }}>● Connected</div>
+
+                <div className="setting-section">
+                  <h4>Security & Privacy</h4>
+                  <div className="setting-item">
+                    <div className="setting-label">Data Retention</div>
+                    <div className="setting-value">Stored Locally</div>
+                  </div>
+                  <button className="danger-btn" onClick={clearAllHistory}>Delete All Chat History</button>
                 </div>
-                <div className="setting-footer" style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '15px' }}>
-                  <button className="auth-btn" onClick={logout} style={{ background: '#ff4d4d' }}>Logout Session</button>
+
+                <div className="setting-footer">
+                  <button className="auth-btn logout-final" onClick={logout}>Logout of all sessions</button>
+                  <div className="v-info">Nova AI Version 2.1.0 · Build 418</div>
                 </div>
               </div>
             </motion.div>
@@ -256,7 +302,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      <main className="chat-main">
+      <main className="chat-main" style={{ fontSize: fontSize === 'Small' ? '0.9rem' : fontSize === 'Large' ? '1.1rem' : '1rem' }}>
         <header className="chat-header">
           <button className="menu-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>☰</button>
           <div className="header-title">Nova AI</div>
@@ -268,7 +314,7 @@ function App() {
             <div className="empty-state">
               <div className="empty-logo">N</div>
               <h1 className="empty-title">How can I help you?</h1>
-              <p className="empty-subtitle">I'm your assistant Nova. Shoot me a message!</p>
+              <p className="empty-subtitle">Currently using <span>{activeModel}</span> assistant.</p>
               <div className="suggestions-grid">
                 {SUGGESTIONS.map((s, i) => (
                   <button key={i} className="suggestion-card" onClick={() => handleSend(s.text)}>
@@ -296,7 +342,7 @@ function App() {
             <div className="message-wrapper ai">
               <div className="message-content">
                 <div className="avatar ai-avatar">N</div>
-                <div className="message-box">Typing...</div>
+                <div className="message-box">Thinking...</div>
               </div>
             </div>
           )}
@@ -318,7 +364,7 @@ function App() {
               ➤
             </button>
           </div>
-          <p className="input-footer">Nova AI can make mistakes. Verify important info.</p>
+          <p className="input-footer">Nova AI Powered by <strong>{activeModel}</strong> · Verify accuracy.</p>
         </footer>
       </main>
     </div>
