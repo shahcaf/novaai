@@ -233,8 +233,9 @@ function App() {
       });
       alert('You have left the team.');
       setIsTeamSettingsOpen(false);
-      fetchConversations();
+      setConversations(prev => prev.filter(c => c.id !== activeId));
       setActiveId('default');
+      fetchConversations();
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to leave team');
     }
@@ -248,10 +249,10 @@ function App() {
       });
       alert('Team chat deleted.');
       setIsTeamSettingsOpen(false);
-      fetchConversations();
+      setConversations(prev => prev.filter(c => c.id !== activeId));
       setActiveId('default');
+      fetchConversations();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to delete team');
     }
   };
 
@@ -677,9 +678,9 @@ function App() {
                         className="save-mini-btn" 
                         style={{ height: '38px', whiteSpace: 'nowrap' }}
                         onClick={() => {
-                          const url = `${window.location.origin}?invite=${customInviteCode}`;
+                          const url = `https://novaai-zeta.vercel.app/join/${customInviteCode || activeConv.inviteCode}`;
                           navigator.clipboard.writeText(url);
-                          alert('Invite link copied!');
+                          alert('Full invite link copied to clipboard!');
                         }}
                       >
                         Copy Link
