@@ -319,21 +319,28 @@ router.post('/', auth, async (req, res) => {
           
           // Case 1: Vision (Images)
           if (ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp' || ext === '.gif') {
+            const fileName = path.basename(filePath);
+            const tag = `[SYSTEM] --- PLATFORM NOTIFICATION: File Successfully Attached (${fileName}) ---`;
+            const enrichedText = `${msg.content || ""}\n\n${tag}`.trim();
+
             if (isVisionModel) {
-              const imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
-              const mimeType = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
-              return {
-                role,
-                content: [
-                  { type: 'text', text: msg.content || "Describe this image." },
-                  { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
-                ]
-              };
+              try {
+                const imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
+                const mimeType = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+                return {
+                  role,
+                  content: [
+                    { type: 'text', text: enrichedText },
+                    { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
+                  ]
+                };
+              } catch (readErr) {
+                console.error('Vision Read error:', readErr);
+                // Fallback to text tag if read fails
+                return { role, content: enrichedText };
+              }
             } else {
-              return {
-                role,
-                content: `${msg.content || ""}\n\n[USER ATTACHMENT: ${path.basename(filePath)}]\n(Note: The user sent an image. Acknowledge it and answer any questions about it based on context.)`
-              };
+              return { role, content: enrichedText };
             }
           }
           
