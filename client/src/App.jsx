@@ -8,10 +8,10 @@ import { useNavigate } from 'react-router-dom';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const SUGGESTIONS = [
-  { title: 'Write a story', text: 'about a time-traveling robot in ancient Rome.' },
-  { title: 'Explain coding', text: 'concept of "Recursion" for a 5-year-old.' },
-  { title: 'Plan a trip', text: '5-day itinerary for Tokyo with a focus on food.' },
-  { title: 'Debugging help', text: 'Why is my React useEffect running twice?' },
+  { title: '✍️ Write a story', text: 'about a time-traveling robot in ancient Rome.' },
+  { title: '💡 Explain coding', text: 'concept of "Recursion" for a 5-year-old.' },
+  { title: '✈️ Plan a trip', text: '5-day itinerary for Tokyo with a focus on food.' },
+  { title: '🚀 Debugging help', text: 'Why is my React useEffect running twice?' },
 ];
 
 function App() {
