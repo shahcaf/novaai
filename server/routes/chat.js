@@ -305,11 +305,9 @@ router.post('/', auth, async (req, res) => {
     const SYSTEM_PROMPT = basePrompt;
 
     // Prepare multi-modal/contextual messages
-    const processedMessages = await Promise.all(messages.map(async (msg) => {
+    const processedMessages = await Promise.all(messages.map(async (msg, index) => {
       const role = msg.role || (msg.isAI ? 'assistant' : 'user');
       
-      // If the message already has attachment tags in content (from DB), keep them
-      // This handles cases where the file no longer exists on disk (e.g. server restarts)
       if (msg.mediaUrl) {
         const relativePath = msg.mediaUrl.startsWith('/') ? msg.mediaUrl.slice(1) : msg.mediaUrl;
         const filePath = path.join(__dirname, '..', relativePath);
@@ -323,9 +321,11 @@ router.post('/', auth, async (req, res) => {
             const tag = `[SYSTEM] --- PLATFORM NOTIFICATION: File Successfully Attached (${fileName}) ---`;
             const enrichedText = `${msg.content || ""}\n\n${tag}`.trim();
 
-            const isLastMessage = messages.indexOf(msg) === messages.length - 1;
+            // VISION SLIDING WINDOW: Include visual data for images in the last 3 messages.
+            // This ensures follow-up questions ("what is this?") correctly see the image turn.
+            const isRecent = index >= messages.length - 3;
 
-            if (isVisionModel && isLastMessage) {
+            if (isVisionModel && isRecent) {
               try {
                 const imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
                 const mimeType = ext === '.png' ? 'image/png' : ext === '.gif' ? 'image/gif' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
@@ -341,7 +341,6 @@ router.post('/', auth, async (req, res) => {
                 return { role, content: enrichedText };
               }
             } else {
-              // Historical images: Text context only to save bandwidth/prevent 413 errors
               return { role, content: enrichedText };
             }
           }
