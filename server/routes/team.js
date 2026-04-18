@@ -104,6 +104,23 @@ router.put('/update/:id', verifyToken, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+// Leave a conversation
+router.delete('/leave/:id', verifyToken, async (req, res) => {
+  try {
+    const membership = await ConversationMember.findOne({
+      where: { userId: req.user.id, conversationId: req.params.id }
+    });
+
+    if (!membership) return res.status(404).json({ error: 'Membership not found' });
+    if (membership.role === 'owner') {
+      return res.status(400).json({ error: 'Owners cannot leave. Please delete the team chat instead.' });
+    }
+
+    await membership.destroy();
+    res.json({ message: 'Left team successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

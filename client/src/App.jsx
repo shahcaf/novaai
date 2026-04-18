@@ -158,7 +158,7 @@ function App() {
   const fetchConversations = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token || !user) return;
 
       const res = await axios.get(`${API_URL}/api/team/my-chats`, {
         headers: { 'x-auth-token': token }
@@ -170,18 +170,32 @@ function App() {
         messages: c.Messages || [],
         createdAt: c.createdAt,
         isShared: true,
-        inviteCode: c.inviteCode
+        inviteCode: c.inviteCode,
+        creatorId: c.creatorId
       }));
 
-      // Merge with local: keep local, but replace/add shared from DB
       setConversations(prev => {
         const local = prev.filter(p => !p.isShared);
-        // Deduplicate shared
         const merged = [...local, ...sharedConvs];
         return merged.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       });
     } catch (err) {
       console.error('Fetch error:', err);
+    }
+  };
+
+  const handleLeaveTeam = async () => {
+    if (!window.confirm('Are you sure you want to leave this team?')) return;
+    try {
+      await axios.delete(`${API_URL}/api/team/leave/${activeId}`, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      alert('You have left the team.');
+      setIsTeamSettingsOpen(false);
+      fetchConversations();
+      setActiveId('default');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to leave team');
     }
   };
 
@@ -395,9 +409,11 @@ function App() {
           <button className="new-chat-btn" style={{ flex: 1 }} onClick={() => createNewConversation(false)}>
             ＋ Personal
           </button>
-          <button className="new-chat-btn team-btn-accent" style={{ flex: 1 }} onClick={() => createNewConversation(true)}>
-            ＋ Team Chat
-          </button>
+          {(!conversations.some(c => c.isShared && c.creatorId !== user?.id)) && (
+            <button className="new-chat-btn team-btn-accent" style={{ flex: 1 }} onClick={() => createNewConversation(true)}>
+              ＋ Team Chat
+            </button>
+          )}
         </div>
 
         <button className="sidebar-action-btn" onClick={() => setIsSettingsOpen(true)}>
@@ -581,6 +597,7 @@ function App() {
                       value={teamName} 
                       onChange={e => setTeamName(e.target.value)}
                       placeholder="e.g. Project Alpha"
+                      disabled={activeConv.creatorId !== user?.id}
                     />
                   </div>
                   
@@ -594,6 +611,7 @@ function App() {
                           value={customInviteCode}
                           onChange={e => setCustomInviteCode(e.target.value)}
                           placeholder="your-code"
+                          disabled={activeConv.creatorId !== user?.id}
                         />
                       </div>
                       <button 
@@ -608,7 +626,6 @@ function App() {
                         Copy Link
                       </button>
                     </div>
-                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Share this link to add friends to this specific chat.</p>
                   </div>
                 </div>
 
@@ -619,25 +636,36 @@ function App() {
                       <div className="avatar user-avatar" style={{ width: 24, height: 24, fontSize: '0.6rem' }}>{user?.username?.[0] || 'U'}</div>
                       <div className="setting-label">{user?.username} (You)</div>
                     </div>
-                    <div className="setting-value" style={{ fontSize: '0.75rem', color: 'var(--accent)' }}>Owner</div>
+                    <div className="setting-value" style={{ fontSize: '0.75rem', color: 'var(--accent)' }}>
+                      {activeConv.creatorId === user?.id ? 'Owner' : 'Member'}
+                    </div>
                   </div>
                 </div>
 
                 <div className="setting-footer">
-                   <button className="auth-btn" onClick={async () => {
-                     try {
-                       setIsUpdating(true);
-                       setConversations(prev => prev.map(c => 
-                         c.id === activeId ? { ...c, title: teamName, inviteCode: customInviteCode } : c
-                       ));
-                       alert('Team settings updated successfully!');
-                       setIsTeamSettingsOpen(false);
-                     } catch(err) {
-                       console.error(err);
-                     } finally {
-                       setIsUpdating(false);
-                     }
-                   }}>Save Team Preferences</button>
+                   {activeConv.creatorId === user?.id ? (
+                     <button className="auth-btn" onClick={async () => {
+                       try {
+                         setIsUpdating(true);
+                         await axios.put(`${API_URL}/api/team/update/${activeId}`, { title: teamName, inviteCode: customInviteCode }, {
+                           headers: { 'x-auth-token': localStorage.getItem('token') }
+                         });
+                         setConversations(prev => prev.map(c => 
+                           c.id === activeId ? { ...c, title: teamName, inviteCode: customInviteCode } : c
+                         ));
+                         alert('Team settings updated successfully!');
+                         setIsTeamSettingsOpen(false);
+                       } catch(err) {
+                         alert(err.response?.data?.error || 'Failed to update');
+                       } finally {
+                         setIsUpdating(false);
+                       }
+                     }}>Save Team Preferences</button>
+                   ) : (
+                     <button className="auth-btn" style={{ background: '#ff4d4d' }} onClick={handleLeaveTeam}>
+                       Leave Team Chat
+                     </button>
+                   )}
                 </div>
               </div>
             </motion.div>
