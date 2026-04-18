@@ -12,6 +12,7 @@ const OpenAI = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const pdf = require('pdf-parse');
 const mammoth = require('mammoth');
+const Tesseract = require('tesseract.js');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'dummy' });
@@ -343,6 +344,15 @@ router.post('/', auth, async (req, res) => {
                 return { role, content: enrichedText };
               }
             } else {
+              // OCR FALLBACK: If model is text-only or image is in history, extract text so AI still has context
+              try {
+                const { data: { text } } = await Tesseract.recognize(filePath, 'eng');
+                if (text && text.trim().length > 0) {
+                  return { role, content: `${enrichedText}\n\n[IMAGE OCR DATA (EXTRACTED TEXT)]:\n${text.trim()}` };
+                }
+              } catch (ocrErr) {
+                console.error('OCR Fallback error:', ocrErr);
+              }
               return { role, content: enrichedText };
             }
           }
