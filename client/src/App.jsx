@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
-import { Plus, Send, Square, Trash2, Share2, Users, Link as LinkIcon, Settings, LogOut } from 'lucide-react';
+import { Plus, Send, Square, Trash2, Share2, Users, Link as LinkIcon, Settings, LogOut, Shield, ShieldAlert, UserMinus } from 'lucide-react';
 import { io } from 'socket.io-client';
 
 const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
@@ -46,6 +46,7 @@ function App() {
   const [isTeamSettingsOpen, setIsTeamSettingsOpen] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [customInviteCode, setCustomInviteCode] = useState('');
+  const [teamMembers, setTeamMembers] = useState([]);
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -69,9 +70,39 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeConv?.messages, isLoading]);
 
-  useEffect(() => {
-    if (editingId && editInputRef.current) editInputRef.current.focus();
-  }, [editingId]);
+  const fetchMembers = async (id = activeId) => {
+    try {
+      const res = await axios.get(`${API_URL}/api/team/members/${id}`, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      setTeamMembers(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleKick = async (memberUserId) => {
+    if (!window.confirm('Are you sure you want to kick this member?')) return;
+    try {
+      await axios.delete(`${API_URL}/api/team/kick/${activeId}/${memberUserId}`, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      fetchMembers();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to kick');
+    }
+  };
+
+  const handleUpdateRole = async (memberUserId, newRole) => {
+    try {
+      await axios.put(`${API_URL}/api/team/role/${activeId}/${memberUserId}`, { role: newRole }, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      fetchMembers();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to update role');
+    }
+  };
 
   const createNewConversation = async (isShared = false) => {
     if (isShared) {
@@ -423,6 +454,7 @@ function App() {
         <button className="sidebar-action-btn" onClick={() => {
           setTeamName(activeConv.title);
           setCustomInviteCode(activeConv.inviteCode || '');
+          fetchMembers(activeId);
           setIsTeamSettingsOpen(true);
         }} title="Manage Team / Share Link">
           <Users size={18} /> Team Settings
@@ -631,14 +663,41 @@ function App() {
 
                 <div className="setting-section">
                   <h4>Active Members</h4>
-                  <div className="setting-item">
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <div className="avatar user-avatar" style={{ width: 24, height: 24, fontSize: '0.6rem' }}>{user?.username?.[0] || 'U'}</div>
-                      <div className="setting-label">{user?.username} (You)</div>
-                    </div>
-                    <div className="setting-value" style={{ fontSize: '0.75rem', color: 'var(--accent)' }}>
-                      {activeConv.creatorId === user?.id ? 'Owner' : 'Member'}
-                    </div>
+                  <div className="member-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {teamMembers.map(m => (
+                      <div key={m.userId} className="setting-item" style={{ background: 'rgba(0,0,0,0.05)', padding: '10px', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          <div className="avatar user-avatar" style={{ width: 32, height: 32, fontSize: '0.8rem' }}>
+                            {m.User?.avatar ? <img src={m.User.avatar} style={{ width: '100%', borderRadius: '50%' }} /> : (m.User?.username?.[0] || 'U')}
+                          </div>
+                          <div>
+                            <div className="setting-label" style={{ marginBottom: 0 }}>{m.User?.username} {m.userId === user?.id && '(You)'}</div>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{m.role.toUpperCase()}</div>
+                          </div>
+                        </div>
+                        
+                        {activeConv.creatorId === user?.id && m.userId !== user?.id && (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button 
+                              className="logout-btn" 
+                              style={{ color: 'var(--accent)', padding: '4px' }}
+                              onClick={() => handleUpdateRole(m.userId, m.role === 'admin' ? 'member' : 'admin')}
+                              title={m.role === 'admin' ? "Demote to Member" : "Promote to Admin"}
+                            >
+                              {m.role === 'admin' ? <ShieldAlert size={16} /> : <Shield size={16} />}
+                            </button>
+                            <button 
+                              className="logout-btn" 
+                              style={{ color: '#ff4d4d', padding: '4px' }}
+                              onClick={() => handleKick(m.userId)}
+                              title="Kick Member"
+                            >
+                              <UserMinus size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
 

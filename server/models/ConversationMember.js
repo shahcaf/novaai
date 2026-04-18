@@ -20,5 +20,6 @@ const ConversationMember = sequelize.define('ConversationMember', {
 // Associations
 User.belongsToMany(Conversation, { through: ConversationMember, foreignKey: 'userId' });
 Conversation.belongsToMany(User, { through: ConversationMember, foreignKey: 'conversationId' });
+ConversationMember.belongsTo(User, { foreignKey: 'userId' });
 
 module.exports = ConversationMember;

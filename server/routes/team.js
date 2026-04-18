@@ -121,6 +121,50 @@ router.delete('/leave/:id', verifyToken, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+// Get all members of a conversation
+router.get('/members/:id', verifyToken, async (req, res) => {
+  try {
+    const members = await ConversationMember.findAll({
+      where: { conversationId: req.params.id },
+      include: [{ model: User, attributes: ['id', 'username', 'avatar', 'email'] }]
+    });
+    res.json(members);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Kick a member (Owner only)
+router.delete('/kick/:conversationId/:userId', verifyToken, async (req, res) => {
+  try {
+    const conversation = await Conversation.findByPk(req.params.conversationId);
+    if (conversation.creatorId !== req.user.id) return res.status(403).json({ error: 'Permission denied' });
+
+    await ConversationMember.destroy({
+      where: { conversationId: req.params.conversationId, userId: req.params.userId }
+    });
+    res.json({ message: 'User kicked successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update role (Owner only)
+router.put('/role/:conversationId/:userId', verifyToken, async (req, res) => {
+  try {
+    const { role } = req.body;
+    const conversation = await Conversation.findByPk(req.params.conversationId);
+    if (conversation.creatorId !== req.user.id) return res.status(403).json({ error: 'Permission denied' });
+
+    const membership = await ConversationMember.findOne({
+      where: { conversationId: req.params.conversationId, userId: req.params.userId }
+    });
+    membership.role = role;
+    await membership.save();
+    res.json(membership);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;
