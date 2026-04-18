@@ -7,7 +7,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
-import { Plus, Send, Square, Trash2, Settings, LogOut, Copy, RefreshCw, Edit2, Check, X, MessageSquare, Loader2 } from 'lucide-react';
+import { Plus, Send, Square, Trash2, Settings, LogOut, Copy, RefreshCw, Edit2, Check, X, MessageSquare, Loader2, Search } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
