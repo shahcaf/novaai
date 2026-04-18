@@ -27,6 +27,9 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Health Check for Render
+app.get('/', (req, res) => res.send('Nova AI Server is Running'));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
@@ -36,15 +39,21 @@ app.use('/api/media', mediaRoutes);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // Database Sync & Server Start
-sequelize.sync({ force: true }) // Recreate tables for clean migration
+// Using { alter: true } is generally safer for production migrations on CockroachDB
+sequelize.authenticate()
   .then(() => {
-    console.log('CockroachDB connected & synced ✓');
+    console.log('Database connection authenticated ✓');
+    return sequelize.sync({ alter: true });
+  })
+  .then(() => {
+    console.log('CockroachDB synced ✓');
     server.listen(PORT, () => {
       console.log(`Nova AI is running on http://localhost:${PORT}`);
     });
   })
   .catch(err => {
-    console.error('Database connection error:', err);
+    console.error('SERVER START ERROR:', err);
+    process.exit(1); // Explicitly exit so process managers know it failed
   });
 
 // Socket.io
@@ -54,9 +63,10 @@ io.on('connection', (socket) => {
   socket.on('sendMessage', async (data) => {
     try {
       const { senderId, text, mediaUrl, mediaType } = data;
+      
       const newMessage = await Message.create({
         senderId,
-        text,
+        text: text || '',
         mediaUrl: mediaUrl || '',
         mediaType: mediaType || 'none'
       });
@@ -65,20 +75,24 @@ io.on('connection', (socket) => {
         include: [{ model: User, as: 'sender', attributes: ['username', 'avatar'] }]
       });
       
-      io.emit('message', populatedMessage);
+      if (populatedMessage) {
+        io.emit('message', populatedMessage);
+      }
 
       // AI Check
-      if (text.toLowerCase().includes('@nova') || text.toLowerCase().includes('nova')) {
+      if (text && (text.toLowerCase().includes('@nova') || text.toLowerCase().includes('nova'))) {
         const response = await getAIResponse(text);
         const aiMessage = await Message.create({
-          senderId, // In a real app, you'd use a dedicated AI user ID
+          senderId, // Simplified for now
           text: response,
           isAI: true
         });
         const populatedAI = await Message.findByPk(aiMessage.id, {
           include: [{ model: User, as: 'sender', attributes: ['username', 'avatar'] }]
         });
-        io.emit('message', populatedAI);
+        if (populatedAI) {
+          io.emit('message', populatedAI);
+        }
       }
     } catch (err) {
       console.error('Socket error:', err);
@@ -101,6 +115,7 @@ async function getAIResponse(message) {
     });
     return completion.choices[0].message.content;
   } catch (error) {
+    console.error('AI Response Error:', error);
     return "Sorry, I'm having trouble connecting to my brain right now.";
   }
 }
