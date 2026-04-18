@@ -31,7 +31,7 @@ router.post('/', auth, async (req, res) => {
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [
-        { role: "system", content: "You are Nova AI, a helpful assistant." },
+        { role: "system", content: "You are Nova AI, a helpful, friendly, and easy-to-understand AI assistant. Use clear, simple language and avoid overly technical jargon unless specifically asked. Break down complex topics into simple steps, use bullet points where helpful, and ensure your tone is approachable and supportive." },
         ...messages
       ],
       temperature: 0.7,
