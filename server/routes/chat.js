@@ -153,12 +153,18 @@ router.post('/', auth, async (req, res) => {
       lastUserMessage.toLowerCase().includes('generate an image') ||
       lastUserMessage.toLowerCase().includes('create an image') ||
       lastUserMessage.toLowerCase().includes('draw me a') ||
+      lastUserMessage.toLowerCase().includes('make me a') ||
+      lastUserMessage.toLowerCase().includes('paint a') ||
+      lastUserMessage.toLowerCase().includes('picture of a') ||
       lastUserMessage.toLowerCase().includes('show me a')
     );
 
     if (isImageRequest) {
-      const prompt = lastUserMessage.replace(/^\/imagine |^generate an image |^create an image |^\/gen /i, '');
-      const encodedPrompt = encodeURIComponent(prompt);
+      let prompt = lastUserMessage.replace(/^\/imagine |^generate an image of |^create an image of |^draw me a |^make me a |^paint a |^picture of a |^show me a |^\/gen /i, '');
+      prompt = prompt.replace(/^generate an image |^create an image |^draw me |^make me |^paint |^picture of /i, '');
+      
+      const cleanPrompt = prompt.trim();
+      const encodedPrompt = encodeURIComponent(cleanPrompt);
       const convId = (req.body.conversationId && req.body.conversationId.length === 36) ? req.body.conversationId : null;
       
       let imageUrl = "";
