@@ -17,6 +17,17 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'dummy' });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy');
 
+// UTILITY: Force every message content to be a string. Called right before API dispatch.
+function forceStringMessages(msgs) {
+  return msgs.map(m => {
+    let c = m.content;
+    if (Array.isArray(c)) c = c.find(p => p?.type === 'text')?.text || c.find(p => typeof p === 'string') || '[Attachment]';
+    if (typeof c !== 'string') c = String(c ?? '');
+    if (c.startsWith('data:')) c = '[Image Attached]';
+    return { role: m.role || 'user', content: c };
+  });
+}
+
 // Get All User Conversations
 router.get('/conversations', auth, async (req, res) => {
   try {
@@ -360,8 +371,8 @@ router.post('/', auth, async (req, res) => {
         // o1/o3 models don't support system roles or temperatures natively
         const isReasoning = activeModel.startsWith('o1') || activeModel.startsWith('o3');
         const finalMessages = isReasoning 
-          ? [{ role: "user", content: "System Instruction: " + SYSTEM_PROMPT }, ...safeMessages]
-          : [{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages];
+          ? [{ role: "user", content: "System Instruction: " + SYSTEM_PROMPT }, ...forceStringMessages(safeMessages)]
+          : [{ role: "system", content: SYSTEM_PROMPT }, ...forceStringMessages(safeMessages)];
         
         const config = {
           model: activeModel,
@@ -380,7 +391,7 @@ router.post('/', auth, async (req, res) => {
           aiContent = completion.choices[0].message.content;
         } catch (gptErr) {
           if (gptErr.status === 404 && activeModel === 'gpt-4o') {
-            const mini = await openai.chat.completions.create({ model: 'gpt-4o-mini', messages: [{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages], max_tokens: 1024, temperature: resolvedTemp });
+            const mini = await openai.chat.completions.create({ model: 'gpt-4o-mini', messages: forceStringMessages([{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages]), max_tokens: 1024, temperature: resolvedTemp });
             aiContent = mini.choices[0].message.content;
             actualModelUsed = 'GPT-4o-mini';
           } else throw gptErr;
@@ -421,9 +432,9 @@ router.post('/', auth, async (req, res) => {
       } else {
         const completion = await groq.chat.completions.create({
           model: activeModel,
-          messages: [{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages],
+          messages: forceStringMessages([{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages]),
           temperature: resolvedTemp,
-          max_tokens: 1024,
+          max_tokens: 4096,
         });
         aiContent = completion.choices[0].message.content;
       }
@@ -431,7 +442,7 @@ router.post('/', auth, async (req, res) => {
       console.error('Final AI fallback triggered:', apiErr.message);
       const fallbackCompletion = await groq.chat.completions.create({
         model: "llama-3.1-8b-instant",
-        messages: [{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages],
+        messages: forceStringMessages([{ role: "system", content: SYSTEM_PROMPT }, ...safeMessages]),
         temperature: resolvedTemp,
         max_tokens: 1024,
       });
