@@ -138,11 +138,13 @@ function App() {
 
 
   const createNewConversation = async () => {
+    if (isLoading) return;
     try {
-      // Prevent creating multiple empty chats if current active one is already empty
+      // If current active one is already empty, just close sidebar and stay here
       const current = conversations.find(c => c.id === activeId);
-      if (current && (!current.messages || current.messages.length === 0)) {
+      if (current && (!current.messages || current.messages.length === 0) && current.title === 'New Chat') {
         setIsSidebarOpen(false);
+        showToast('Already in a new chat');
         return current;
       }
 
@@ -154,6 +156,7 @@ function App() {
       const newConv = { ...res.data, messages: [] };
       setConversations([newConv, ...conversations]);
       setActiveId(newConv.id);
+      setSearchTerm(''); // Clear search so the new chat actually shows up
       setIsSidebarOpen(false);
       return newConv;
     } catch (err) {
