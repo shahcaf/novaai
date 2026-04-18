@@ -104,6 +104,20 @@ router.put('/update/:id', verifyToken, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+// Delete a team chat (Owner only)
+router.delete('/delete/:id', verifyToken, async (req, res) => {
+  try {
+    const conversation = await Conversation.findByPk(req.params.id);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+    if (conversation.creatorId !== req.user.id) return res.status(403).json({ error: 'Permission denied' });
+
+    await conversation.destroy();
+    res.json({ message: 'Team chat deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Leave a conversation
 router.delete('/leave/:id', verifyToken, async (req, res) => {
   try {

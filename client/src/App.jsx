@@ -217,6 +217,10 @@ function App() {
   };
 
   const handleLeaveTeam = async () => {
+    if (String(activeConv.creatorId) === String(user?.id)) {
+      alert('As the Owner, you cannot leave. Please use "Delete Team" instead if you want to close this chat.');
+      return;
+    }
     if (!window.confirm('Are you sure you want to leave this team?')) return;
     try {
       await axios.delete(`${API_URL}/api/team/leave/${activeId}`, {
@@ -228,6 +232,21 @@ function App() {
       setActiveId('default');
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to leave team');
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!window.confirm('WARNING: This will permanently delete the team chat and all messages for everyone. Proceed?')) return;
+    try {
+      await axios.delete(`${API_URL}/api/team/delete/${activeId}`, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      alert('Team chat deleted.');
+      setIsTeamSettingsOpen(false);
+      fetchConversations();
+      setActiveId('default');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete team');
     }
   };
 
@@ -707,23 +726,28 @@ function App() {
 
                 <div className="setting-footer">
                    {String(activeConv.creatorId) === String(user?.id) ? (
-                     <button className="auth-btn" onClick={async () => {
-                       try {
-                         setIsUpdating(true);
-                         await axios.put(`${API_URL}/api/team/update/${activeId}`, { title: teamName, inviteCode: customInviteCode }, {
-                           headers: { 'x-auth-token': localStorage.getItem('token') }
-                         });
-                         setConversations(prev => prev.map(c => 
-                           c.id === activeId ? { ...c, title: teamName, inviteCode: customInviteCode } : c
-                         ));
-                         alert('Team settings updated successfully!');
-                         setIsTeamSettingsOpen(false);
-                       } catch(err) {
-                         alert(err.response?.data?.error || 'Failed to update');
-                       } finally {
-                         setIsUpdating(false);
-                       }
-                     }}>Save Team Preferences</button>
+                     <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+                       <button className="auth-btn" style={{ flex: 2 }} onClick={async () => {
+                         try {
+                           setIsUpdating(true);
+                           await axios.put(`${API_URL}/api/team/update/${activeId}`, { title: teamName, inviteCode: customInviteCode }, {
+                             headers: { 'x-auth-token': localStorage.getItem('token') }
+                           });
+                           setConversations(prev => prev.map(c => 
+                             c.id === activeId ? { ...c, title: teamName, inviteCode: customInviteCode } : c
+                           ));
+                           alert('Team settings updated successfully!');
+                           setIsTeamSettingsOpen(false);
+                         } catch(err) {
+                           alert(err.response?.data?.error || 'Failed to update');
+                         } finally {
+                           setIsUpdating(false);
+                         }
+                       }}>Save Team Preferences</button>
+                       <button className="auth-btn" style={{ flex: 1, background: '#ff4d4d' }} onClick={handleDeleteTeam}>
+                         Delete Team
+                       </button>
+                     </div>
                    ) : (
                      <button className="auth-btn" style={{ background: '#ff4d4d' }} onClick={handleLeaveTeam}>
                        Leave Team Chat
