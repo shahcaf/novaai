@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { Plus, Image, Paperclip, Send, Settings, LogOut, LayoutGrid, Volume2, Square, Trash2, Edit2, X, MessageSquare, Globe, Cpu, Zap } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -41,6 +42,8 @@ function App() {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const editInputRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const activeConv = conversations.find(c => c.id === activeId) || conversations[0];
 
@@ -110,6 +113,9 @@ function App() {
   const handleSend = async (text = input) => {
     if (!text.trim() || isLoading) return;
 
+    // Create abort controller for this request
+    abortControllerRef.current = new AbortController();
+
     const userMessage = { 
       role: 'user', 
       content: text, 
@@ -134,7 +140,8 @@ function App() {
       const response = await axios.post(`${API_URL}/api/chat`, {
         messages: updatedMessages.map(m => ({ role: m.role, content: m.content }))
       }, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
+        headers: { 'x-auth-token': localStorage.getItem('token') },
+        signal: abortControllerRef.current.signal
       });
 
       const aiMessage = { 
@@ -148,15 +155,75 @@ function App() {
         c.id === activeId ? { ...c, messages: [...c.messages, aiMessage] } : c
       ));
     } catch (err) {
-      console.error(err);
-      const errorMessage = { 
-        role: 'assistant', 
-        content: "I'm sorry, I encountered an error. Please check your connection.", 
-        timestamp: new Date().toISOString() 
+      if (axios.isCancel(err)) {
+        console.log('Request canceled');
+      } else {
+        console.error(err);
+        const errorMessage = { 
+          role: 'assistant', 
+          content: "I'm sorry, I encountered an error. Please check your connection.", 
+          timestamp: new Date().toISOString() 
+        };
+        setConversations(prev => prev.map(c => 
+          c.id === activeId ? { ...c, messages: [...c.messages, errorMessage] } : c
+        ));
+      }
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('media', file);
+    formData.append('text', input || `Uploaded ${file.name}`);
+
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${API_URL}/api/media/upload`, formData, {
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'x-auth-token': token 
+        }
+      });
+
+      const userMessage = {
+        role: 'user',
+        content: res.data.text,
+        mediaUrl: res.data.mediaUrl,
+        mediaType: res.data.mediaType,
+        timestamp: new Date().toISOString()
       };
+
       setConversations(prev => prev.map(c => 
-        c.id === activeId ? { ...c, messages: [...c.messages, errorMessage] } : c
+        c.id === activeId ? { ...c, messages: [...c.messages, userMessage] } : c
       ));
+      
+      setInput('');
+      
+      // If it's a new chat, update title
+      if (activeConv.title === 'New Chat') {
+        const newTitle = `Shared ${res.data.mediaType}`;
+        setConversations(prev => prev.map(c => 
+          c.id === activeId ? { ...c, title: newTitle } : c
+        ));
+      }
+
+    } catch (err) {
+      console.error('Upload failed', err);
+      alert('Failed to upload file. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -332,6 +399,15 @@ function App() {
                     {msg.role === 'user' ? (user?.username?.[0] || 'U') : 'N'}
                   </div>
                   <div className="message-box">
+                    {msg.mediaUrl && (
+                      <div className="chat-media-preview" style={{ marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                        {msg.mediaType === 'image' ? (
+                          <img src={`${API_URL}${msg.mediaUrl}`} alt="media" style={{ maxWidth: '100%', maxHeight: '400px', display: 'block' }} />
+                        ) : (
+                          <video controls src={`${API_URL}${msg.mediaUrl}`} style={{ maxWidth: '100%', maxHeight: '400px', display: 'block' }} />
+                        )}
+                      </div>
+                    )}
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 </div>
@@ -351,17 +427,37 @@ function App() {
 
         <footer className="input-area">
           <div className="input-wrapper">
+            <button 
+              className="upload-plus-btn" 
+              onClick={() => fileInputRef.current.click()}
+              title="Add files or pictures"
+            >
+              <Plus size={20} />
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              onChange={handleFileUpload}
+              accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+            />
             <textarea
               ref={textareaRef}
               className="chat-input"
               rows={1}
+              style={{ paddingLeft: '48px' }}
               placeholder="Message Nova AI..."
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
             />
-            <button className="send-btn" onClick={() => handleSend()} disabled={!input.trim() || isLoading}>
-              ➤
+            <button 
+              className={`send-btn ${isLoading ? 'stop-btn' : ''}`} 
+              onClick={isLoading ? handleStop : () => handleSend()} 
+              disabled={(!input.trim() && !isLoading)}
+              title={isLoading ? "Stop generating" : "Send message"}
+            >
+              {isLoading ? <Square size={16} fill="white" /> : <Send size={18} />}
             </button>
           </div>
           <p className="input-footer">Nova AI Powered by <strong>{activeModel}</strong> · Verify accuracy.</p>
