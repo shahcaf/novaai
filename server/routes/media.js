@@ -28,9 +28,10 @@ router.post('/upload', auth, upload.single('media'), async (req, res) => {
 
     const newMessage = await Message.create({
       senderId: req.user.id,
-      text: req.body.text || '',
+      content: req.body.content || '',
       mediaUrl,
-      mediaType
+      mediaType,
+      conversationId: req.body.conversationId // Added to link message to conversation
     });
 
     const populatedMessage = await Message.findByPk(newMessage.id, {

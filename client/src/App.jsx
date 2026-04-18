@@ -115,26 +115,6 @@ function App() {
   };
 
 
-  const shareConversation = () => {
-    if (!activeConv.inviteCode) {
-      // If it's a local chat, we might want to "Upload" it to a team chat first
-      // For now, let's assume all chats can be shared by generating a code
-      const code = Math.random().toString(36).substring(7);
-      const newInviteCode = activeConv.inviteCode || code;
-      
-      setConversations(prev => prev.map(c => 
-        c.id === activeId ? { ...c, inviteCode: newInviteCode } : c
-      ));
-
-      const shareUrl = `${window.location.origin}?invite=${newInviteCode}`;
-      navigator.clipboard.writeText(shareUrl);
-      alert('Invite link copied to clipboard!');
-    } else {
-      const shareUrl = `${window.location.origin}?invite=${activeConv.inviteCode}`;
-      navigator.clipboard.writeText(shareUrl);
-      alert('Invite link copied to clipboard!');
-    }
-  };
 
   const startEditing = (conv, e) => {
     e.stopPropagation();
@@ -211,7 +191,8 @@ function App() {
 
     const formData = new FormData();
     formData.append('media', file);
-    formData.append('text', input || `Uploaded ${file.name}`);
+    formData.append('content', input || `Uploaded ${file.name}`);
+    formData.append('conversationId', activeId);
 
     try {
       setIsLoading(true);
@@ -225,11 +206,12 @@ function App() {
 
       const userMessage = {
         role: 'user',
-        content: res.data.text,
+        content: res.data.content || res.data.text || '', // Fallback support
         mediaUrl: res.data.mediaUrl,
         mediaType: res.data.mediaType,
         timestamp: new Date().toISOString()
       };
+创新
 
       setConversations(prev => prev.map(c => 
         c.id === activeId ? { ...c, messages: [...c.messages, userMessage] } : c

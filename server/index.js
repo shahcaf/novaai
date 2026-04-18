@@ -3,8 +3,14 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const socketIo = require('socket.io');
+const fs = require('fs');
 const path = require('path');
 const Groq = require('groq-sdk');
+
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
 
 const sequelize = require('./config/database');
 const User = require('./models/User');
