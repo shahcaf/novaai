@@ -30,6 +30,7 @@ function App() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingTitle, setEditingTitle] = useState('');
 
@@ -209,10 +210,51 @@ function App() {
           </div>
           <div className="profile-info">
             <div className="profile-name">{user?.username}</div>
-            <button className="logout-btn" onClick={logout}>Sign out</button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="logout-btn" onClick={() => setIsSettingsOpen(true)}>Settings</button>
+              <span style={{ color: 'var(--text-muted)' }}>•</span>
+              <button className="logout-btn" onClick={logout}>Sign out</button>
+            </div>
           </div>
         </div>
       </aside>
+
+      {/* ─── Settings Modal ─────────────────── */}
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <div className="modal-overlay" onClick={() => setIsSettingsOpen(false)}>
+            <motion.div 
+              className="settings-modal" 
+              onClick={e => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+            >
+              <div className="modal-header">
+                <h3>Settings</h3>
+                <button className="close-btn" onClick={() => setIsSettingsOpen(false)}>✕</button>
+              </div>
+              <div className="modal-body">
+                <div className="setting-item">
+                  <div className="setting-label">Theme</div>
+                  <div className="setting-value">Dark (Always)</div>
+                </div>
+                <div className="setting-item">
+                  <div className="setting-label">Account</div>
+                  <div className="setting-value">{user?.email}</div>
+                </div>
+                <div className="setting-item">
+                  <div className="setting-label">API Status</div>
+                  <div className="setting-value" style={{ color: '#4caf50' }}>● Connected</div>
+                </div>
+                <div className="setting-footer" style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '15px' }}>
+                  <button className="auth-btn" onClick={logout} style={{ background: '#ff4d4d' }}>Logout Session</button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <main className="chat-main">
         <header className="chat-header">
