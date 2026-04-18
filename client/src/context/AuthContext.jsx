@@ -49,6 +49,12 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const logout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+    window.location.href = '/login';
+  };
+
   const updateProfile = async (data) => {
     const token = localStorage.getItem('token');
     const res = await axios.put(`${API_BASE_URL}/api/auth/profile`, data, {
