@@ -1,16 +1,28 @@
-import { StrictMode } from 'react'
+import { StrictMode, useContext } from 'react'
 import { createRoot } from 'react-dom/client'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import './index.css'
 import App from './App.jsx'
-import { AuthProvider } from './context/AuthContext'
+import { AuthProvider, AuthContext } from './context/AuthContext'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './components/Auth/Login'
 import Register from './components/Auth/Register'
 
 const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useContext(AuthContext);
   const token = localStorage.getItem('token');
-  if (!token) return <Navigate to="/login" />;
+  
+  if (loading) return <div className="loading-screen">Loading...</div>;
+  if (!token && !user) return <Navigate to="/login" />;
+  return children;
+};
+
+const PublicRoute = ({ children }) => {
+  const { user, loading } = useContext(AuthContext);
+  const token = localStorage.getItem('token');
+  
+  if (loading) return <div className="loading-screen">Loading...</div>;
+  if (token || user) return <Navigate to="/" />;
   return children;
 };
 
@@ -22,13 +34,14 @@ createRoot(document.getElementById('root')).render(
       <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID || ""}>
         <Router>
           <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
             <Route path="/" element={
               <ProtectedRoute>
                 <App />
               </ProtectedRoute>
             } />
+            <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Router>
       </GoogleOAuthProvider>

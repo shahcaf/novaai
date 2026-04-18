@@ -29,7 +29,7 @@ router.post('/google', async (req, res) => {
       });
     }
 
-    const jwtToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const jwtToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ token: jwtToken, user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar } });
   } catch (err) {
     res.status(500).json({ error: 'Google authentication failed', details: err.message });
@@ -44,7 +44,7 @@ router.post('/register', async (req, res) => {
     if (user) return res.status(400).json({ error: 'User already exists' });
     const hashedPassword = await bcrypt.hash(password, 10);
     user = await User.create({ username, email, password: hashedPassword });
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, username, email } });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -59,7 +59,7 @@ router.post('/login', async (req, res) => {
     if (!user) return res.status(400).json({ error: 'User not found' });
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
   } catch (err) {
     res.status(500).json({ error: err.message });
