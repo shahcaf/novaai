@@ -1,7 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 
 const Register = () => {
   const [username, setUsername] = useState('');
@@ -23,16 +22,13 @@ const Register = () => {
 
   return (
     <div className="auth-container">
-      <motion.div 
-        className="auth-card"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <div className="auth-card">
         <h2>Create Account</h2>
-        <p>Join Nova AI and start sharing</p>
+        <p>Join Nova AI today</p>
         
+        {error && <div className="error-msg">{error}</div>}
+
         <form onSubmit={handleSubmit}>
-          {error && <div className="error-msg">{error}</div>}
           <div className="input-group">
             <label>Username</label>
             <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required />
@@ -47,10 +43,11 @@ const Register = () => {
           </div>
           <button type="submit" className="auth-btn">Register</button>
         </form>
-        <p className="auth-footer">
-          Already have an account? <Link to="/login">Login</Link>
+
+        <p className="auth-footer" style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.85rem' }}>
+          Already have an account? <Link to="/login" style={{ color: 'var(--accent)', fontWeight: '700', textDecoration: 'none' }}>Login</Link>
         </p>
-      </motion.div>
+      </div>
     </div>
   );
 };

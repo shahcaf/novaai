@@ -1,7 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { GoogleLogin } from '@react-oauth/google';
 
 const Login = () => {
@@ -32,16 +31,13 @@ const Login = () => {
 
   return (
     <div className="auth-container">
-      <motion.div 
-        className="auth-card"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <div className="auth-card">
         <h2>Welcome Back</h2>
-        <p>Login to your Nova AI account</p>
+        <p>Login to your account</p>
         
+        {error && <div className="error-msg">{error}</div>}
+
         <form onSubmit={handleSubmit}>
-          {error && <div className="error-msg">{error}</div>}
           <div className="input-group">
             <label>Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -55,19 +51,21 @@ const Login = () => {
 
         <div className="divider"><span>OR</span></div>
 
-        <div className="social-login">
+        <div className="social-login" style={{ display: 'flex', justifyContent: 'center' }}>
           <GoogleLogin 
             onSuccess={handleGoogleSuccess}
             onError={() => setError('Google login failed')}
             theme="filled_black"
+            text="continue_with"
+            shape="rectangular"
             width="100%"
           />
         </div>
 
-        <p className="auth-footer">
-          Don't have an account? <Link to="/register">Register</Link>
+        <p className="auth-footer" style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.85rem' }}>
+          Don't have an account? <Link to="/register" style={{ color: 'var(--accent)', fontWeight: '700', textDecoration: 'none' }}>Register</Link>
         </p>
-      </motion.div>
+      </div>
     </div>
   );
 };
