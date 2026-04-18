@@ -4,9 +4,6 @@ import ReactMarkdown from 'react-markdown';
 import axios from 'axios';
 import { AuthContext } from './context/AuthContext';
 import { Plus, Send, Square, Trash2, Settings, LogOut } from 'lucide-react';
-import { io } from 'socket.io-client';
-
-const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -51,6 +48,10 @@ function App() {
   const abortControllerRef = useRef(null);
 
   const activeConv = conversations.find(c => c.id === activeId) || conversations[0];
+
+  const fetchConversations = async () => {
+    // Team features removed. Solo mode only.
+  };
 
   useEffect(() => {
     if (user) {
@@ -108,12 +109,6 @@ function App() {
       setIsSettingsOpen(false);
     }
   };
-
-
-  const fetchConversations = async () => {
-    // Team features removed. Solo mode only.
-  };
-
 
 
   const startEditing = (conv, e) => {
