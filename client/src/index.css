@@ -1240,3 +1240,121 @@ body::after {
 .apple-btn:hover {
   background: #f0f0f0 !important;
 }
+
+/* ─── Nova Premium Popups ────────────────────────── */
+.nova-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.nova-custom-modal {
+  background: #171717;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 420px;
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+}
+
+.nova-modal-accent-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(to right, var(--accent), var(--accent-2));
+}
+
+.nova-modal-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.nova-modal-text {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.nova-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.nova-btn-cancel {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: #fff;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nova-btn-confirm {
+  flex: 1.5;
+  background: #ef4444; /* Alert Red */
+  border: none;
+  color: #fff;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+.nova-btn-cancel:hover { background: rgba(255,255,255,0.1); }
+.nova-btn-confirm:hover { background: #dc2626; transform: scale(1.02); }
+
+/* --- Toast Notification --- */
+.nova-toast {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  background: rgba(23, 23, 23, 0.9);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  padding: 12px 20px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  z-index: 10001;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+}
+
+.nova-toast.success { border-left: 4px solid #10b981; }
+.nova-toast.error { border-left: 4px solid #ef4444; }
+
+.toast-icon {
+  width: 24px; height: 24px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .nova-toast {
+    left: 20px; right: 20px;
+    bottom: 20px;
+  }
+}

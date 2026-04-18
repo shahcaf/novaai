@@ -44,6 +44,15 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [customPersona, setCustomPersona] = useState(localStorage.getItem('novacustomPersona') || '');
 
+  // Premium UI State
+  const [modal, setModal] = useState(null); // { title, message, actionText, onConfirm }
+  const [toast, setToast] = useState(null); // { message, type: 'error' | 'success' }
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const editInputRef = useRef(null);
@@ -154,48 +163,59 @@ function App() {
 
   const deleteConversation = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm('Delete this conversation?')) return;
     
-    try {
-      const token = localStorage.getItem('token');
-      // OPTIMISTIC UI: Remove it locally first so it feels instant
-      const filtered = conversations.filter(c => c.id !== id);
-      setConversations(filtered);
-      
-      // Perform deletion on backend
-      await axios.delete(`${API_URL}/api/chat/conversations/${id}`, {
-        headers: { 'x-auth-token': token }
-      });
-      
-      // Post-deletion housekeeping
-      if (filtered.length === 0) {
-        await createNewConversation();
-      } else if (activeId === id) {
-        setActiveId(filtered[0].id);
+    setModal({
+      title: 'Delete Conversation?',
+      message: 'This action cannot be undone. All messages in this thread will be permanently erased.',
+      actionText: 'Delete Permanently',
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const filtered = conversations.filter(c => c.id !== id);
+          setConversations(filtered);
+          
+          await axios.delete(`${API_URL}/api/chat/conversations/${id}`, {
+            headers: { 'x-auth-token': token }
+          });
+          
+          if (filtered.length === 0) {
+            await createNewConversation();
+          } else if (activeId === id) {
+            setActiveId(filtered[0].id);
+          }
+          showToast('Conversation deleted', 'success');
+        } catch (err) {
+          console.error(err);
+          fetchConversations();
+          showToast('Engine Error: Deletion failed', 'error');
+        }
+        setModal(null);
       }
-    } catch (err) {
-      console.error('DELETION CRASH:', err);
-      // Re-fetch to sync if it really failed
-      fetchConversations();
-      alert('Failed to delete conversation: ' + (err.response?.data?.error || err.message));
-    }
+    });
   };
 
   const clearAllHistory = async () => {
-    if (window.confirm('Are you sure you want to delete ALL chat history? This cannot be undone.')) {
-      try {
-        const token = localStorage.getItem('token');
-        for (const conv of conversations) {
-          await axios.delete(`${API_URL}/api/chat/conversations/${conv.id}`, {
-            headers: { 'x-auth-token': token }
-          });
+    setModal({
+      title: 'Purge All History?',
+      message: 'You are about to delete every conversation associated with your account. This action is irreversible.',
+      actionText: 'Purge Database',
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('token');
+          for (const conv of conversations) {
+            await axios.delete(`${API_URL}/api/chat/conversations/${conv.id}`, {
+              headers: { 'x-auth-token': token }
+            });
+          }
+          await fetchConversations();
+          setIsSettingsOpen(false);
+          showToast('Global history purged', 'success');
+        } catch (err) {
+          showToast('Failed to clear global history', 'error');
         }
-        await fetchConversations();
-        setIsSettingsOpen(false);
-      } catch (err) {
-        alert('Failed to clear history');
+        setModal(null);
       }
-    }
+    });
   };
 
   const startEditing = (conv, e) => {
@@ -656,6 +676,46 @@ function App() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- NOVA CUSTOM ACTION MODAL --- */}
+      <AnimatePresence>
+        {modal && (
+          <div className="nova-modal-overlay" onClick={() => setModal(null)}>
+            <motion.div 
+               className="nova-custom-modal"
+               onClick={e => e.stopPropagation()}
+               initial={{ opacity: 0, y: 50, scale: 0.9 }}
+               animate={{ opacity: 1, y: 0, scale: 1 }}
+               exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            >
+               <div className="nova-modal-accent-bar"></div>
+               <h3 className="nova-modal-title">{modal.title}</h3>
+               <p className="nova-modal-text">{modal.message}</p>
+               <div className="nova-modal-actions">
+                 <button className="nova-btn-cancel" onClick={() => setModal(null)}>Cancel</button>
+                 <button className="nova-btn-confirm" onClick={modal.onConfirm}>{modal.actionText}</button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- NOVA SMART TOAST --- */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div 
+            className={`nova-toast ${toast.type}`}
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+          >
+            <div className="toast-icon">
+              {toast.type === 'error' ? '✕' : '✓'}
+            </div>
+            {toast.message}
+          </motion.div>
         )}
       </AnimatePresence>
 
