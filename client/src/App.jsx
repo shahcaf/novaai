@@ -320,6 +320,10 @@ function App() {
           ＋ New Chat
         </button>
 
+        <button className="sidebar-action-btn" onClick={() => setIsSettingsOpen(true)}>
+          <Settings size={18} /> Settings
+        </button>
+
         <div className="sidebar-scroll">
           {Object.entries(grouped).map(([label, convs]) => (
             <div key={label}>

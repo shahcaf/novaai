@@ -107,6 +107,29 @@ body {
   box-shadow: 0 0 15px var(--accent-glow);
 }
 
+.sidebar-action-btn {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  transition: all var(--transition);
+  width: 100%;
+}
+
+.sidebar-action-btn:hover {
+  background-color: var(--surface);
+  color: var(--text-main);
+  border-color: var(--border);
+}
+
 .sidebar-scroll {
   flex: 1;
   overflow-y: auto;
