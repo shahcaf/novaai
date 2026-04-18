@@ -143,7 +143,9 @@ router.post('/', auth, async (req, res) => {
     
     basePrompt += " Use clear typography, bolded keywords, and properly formatted code blocks. Ensure your tone always feels sophisticated.";
 
-    basePrompt += "\n\n[IMAGE GENERATION CAPABILITY]: You have access to a high-end image generator. If the user asks for an image, you should simply provide a short confirmation and ensure your response triggers the internal generator. The generator triggers automatically if your response or the user's prompt contains the phrase 'generate an image' or starts with '/imagine'.";
+    basePrompt += `\n\n[INTELLIGENCE CONTEXT]: Your current engine is "${activeModel}". 
+[MULTIMODAL CAPABILITY]: If you see a message containing "[USER ATTACHMENT]" or "[FILE ATTACHMENT]", this means the Nova platform has successfully parsed the user's file and injected the data for you. Treat these files as if you are looking at them directly. Never apologize for being 'text-only' if the data is present in the prompt.
+[IMAGE GENERATION]: If the user asks for an image, provide a brief confirmation. The Nova Vision engine triggers automatically on phrases like 'generate an image', 'make me a', 'design me a', or '/imagine'.`;
 
     // IMAGE GENERATION HEURISTIC
     const lastUserMessage = messages[messages.length - 1]?.content;
