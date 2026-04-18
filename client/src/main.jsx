@@ -9,11 +9,19 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './components/Auth/Login'
 import Register from './components/Auth/Register'
 
+const PremiumLoader = () => (
+  <div className="nova-boot-screen">
+    <div className="nova-boot-logo">N</div>
+    <div className="nova-boot-text">Nova AI</div>
+    <div className="nova-boot-pulse"></div>
+  </div>
+);
+
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useContext(AuthContext);
   const token = localStorage.getItem('token');
   
-  if (loading) return <div className="loading-screen">Loading...</div>;
+  if (loading) return <PremiumLoader />;
   if (!token && !user) return <Navigate to="/login" />;
   return children;
 };
@@ -22,7 +30,7 @@ const PublicRoute = ({ children }) => {
   const { user, loading } = useContext(AuthContext);
   const token = localStorage.getItem('token');
   
-  if (loading) return <div className="loading-screen">Loading...</div>;
+  if (loading) return <PremiumLoader />;
   if (token || user) return <Navigate to="/" />;
   return children;
 };
