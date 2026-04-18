@@ -50,6 +50,7 @@ const Register = () => {
                   return;
                 }
                 const redirectUri = encodeURIComponent(`${window.location.origin}/discord-callback`);
+                console.log('NOVA DEBUG - Discord Redirect URI:', `${window.location.origin}/discord-callback`);
                 window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=identify%20email`;
               }}
               style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', background: '#5865F2', border: 'none', borderRadius: '12px', color: 'white', fontWeight: '600', cursor: 'pointer' }}
