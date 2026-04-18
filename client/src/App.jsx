@@ -158,19 +158,26 @@ function App() {
     
     try {
       const token = localStorage.getItem('token');
+      // OPTIMISTIC UI: Remove it locally first so it feels instant
+      const filtered = conversations.filter(c => c.id !== id);
+      setConversations(filtered);
+      
+      // Perform deletion on backend
       await axios.delete(`${API_URL}/api/chat/conversations/${id}`, {
         headers: { 'x-auth-token': token }
       });
       
-      const filtered = conversations.filter(c => c.id !== id);
-      if (!filtered.length) {
+      // Post-deletion housekeeping
+      if (filtered.length === 0) {
         await createNewConversation();
-      } else {
-        if (activeId === id) setActiveId(filtered[0].id);
-        setConversations(filtered);
+      } else if (activeId === id) {
+        setActiveId(filtered[0].id);
       }
     } catch (err) {
-      alert('Failed to delete conversation');
+      console.error('DELETION CRASH:', err);
+      // Re-fetch to sync if it really failed
+      fetchConversations();
+      alert('Failed to delete conversation: ' + (err.response?.data?.error || err.message));
     }
   };
 
