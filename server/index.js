@@ -47,9 +47,21 @@ sequelize.authenticate()
   })
   .then(() => {
     console.log('CockroachDB synced ✓');
-    server.listen(PORT, () => {
-      console.log(`Nova AI is running on http://localhost:${PORT}`);
-    });
+    function startServer(port) {
+  server.listen(port, () => {
+    console.log(`Nova AI is running on http://localhost:${port}`);
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`Port ${port} in use, trying ${port + 1}`);
+      startServer(port + 1);
+    } else {
+      console.error('Server start error:', err);
+      process.exit(1);
+    }
+  });
+}
+startServer(PORT);
+
   })
   .catch(err => {
     console.error('SERVER START ERROR:', err);
