@@ -9,9 +9,17 @@ const ConversationMember = sequelize.define('ConversationMember', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
+  userId: {
+    type: DataTypes.UUID,
+    references: { model: User, key: 'id' }
+  },
+  conversationId: {
+    type: DataTypes.UUID,
+    references: { model: Conversation, key: 'id' }
+  },
   role: {
-    type: DataTypes.STRING,
-    defaultValue: 'member' // 'owner', 'member'
+    type: DataTypes.ENUM('owner', 'admin', 'member'),
+    defaultValue: 'member'
   }
 }, {
   timestamps: true
