@@ -23,29 +23,48 @@ const Register = () => {
   return (
     <div className="auth-container">
       <div className="auth-card">
+        <div className="auth-card-badge">Nova Cloud v2.1.5</div>
         <h2>Create Account</h2>
-        <p>Join Nova AI today</p>
+        <p>Join Nova AI and start chatting</p>
         
         {error && <div className="error-msg">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="input-group">
             <label>Username</label>
-            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required />
+            <input 
+              type="text" 
+              placeholder="Your name"
+              value={username} 
+              onChange={(e) => setUsername(e.target.value)} 
+              required 
+            />
           </div>
           <div className="input-group">
-            <label>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <label>Email Address</label>
+            <input 
+              type="email" 
+              placeholder="name@company.com"
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required 
+            />
           </div>
           <div className="input-group">
             <label>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <input 
+              type="password" 
+              placeholder="••••••••"
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required 
+            />
           </div>
-          <button type="submit" className="auth-btn">Register</button>
+          <button type="submit" className="auth-btn">Create Free Account</button>
         </form>
 
-        <p className="auth-footer" style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.85rem' }}>
-          Already have an account? <Link to="/login" style={{ color: 'var(--accent)', fontWeight: '700', textDecoration: 'none' }}>Login</Link>
+        <p className="auth-footer">
+          Already have an account? <Link to="/login">Sign in instead</Link>
         </p>
       </div>
     </div>
